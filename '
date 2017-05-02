@@ -1,0 +1,545 @@
+/* Author: Pengfei Ren
+ * Date: September 19, 2015
+ * Pin Mapping for RF231 on .NOW: 
+ * SCK --> PA5; MISO --> PA6; MOSI --> PA7; CLKM --> OSC_IN (not connected to GPIO, routed to a timer); IRQ --> PE1; SLP_TR --> PG8; /SEL --> PG6; /RST --> PE2;
+ * Note that: the CLKM is not implemented temporarily.
+ */
+
+#include <stm32f10x_exti.h>
+#include "platform/now/rf231.h"
+#include "platform/now/delay.h"
+#include "core/net/mac/prk-mcs/prkmcs.h"
+
+/* Sending buffer for preparing packets */
+uint8_t send_buffer[RF231_MAX_FRAME_LENGTH];
+uint8_t send_buffer_size;
+
+/* Received frames are buffered to rxframe by IRS for read */
+uint8_t rxframe_head, rxframe_tail;
+rx_frame_t rxframe[RF231_CONF_RX_BUFFERS];
+
+/* Process declaration */
+PROCESS(rf231_process, "RF231 Driver");
+
+/*-------------------------------------------------------------------------------*/
+uint8_t test_var;
+/* Initialize the radio with pre-set parameters */
+int rf231_init(void) {
+	rf231_arch_init();
+	rf231_rx_on();
+	if (RF231_GetStatus() != RF231_TRX_STATUS__RX_ON)
+	{
+		printf("Not in RX_ON ...\r\n");
+		return -1;
+	}
+	rf231_config();
+
+	for (uint8_t i = 0; i < RF231_CONF_RX_BUFFERS; i++) {
+		rxframe[i].length = 0;
+	}
+	rxframe_head = 0;
+	rxframe_tail = 0;
+
+	process_start(&rf231_process, NULL);
+    return 0;
+}
+
+/* Prepare the radio with a packet to be sent */
+int rf231_prepare(const uint8_t *data, uint8_t len) {
+	uint8_t *buf_ptr = send_buffer;
+	uint8_t dummy_checksum[CHECKSUM_LEN] = { 0 };
+	
+    if(len + CHECKSUM_LEN > RF231_MAX_FRAME_LENGTH) {
+        printf("Too big ...\r\n");
+	    return -1;
+    } else {
+        /* Put the data in send buffer */
+        memcpy(buf_ptr, data, len);
+	    buf_ptr += len;
+	    
+	    memcpy(buf_ptr, dummy_checksum, CHECKSUM_LEN);
+	    send_buffer_size = len + CHECKSUM_LEN;
+    }
+
+	return 0;
+}
+
+/* Send the packet that has previously been prepared */
+int rf231_transmit() {
+	rf231_tx_on();
+
+	if (RF231_GetStatus() != RF231_TRX_STATUS__PLL_ON)
+	{
+		printf("Not in PLL_ON ...\r\n");
+		return -1;
+	}
+
+    /* Toogle the SLP_TR pin to initiate the frame transmission */
+    /* Note that currently the data should first be put in the frame */
+    WriteFrame(send_buffer, send_buffer_size);
+    RF231_SLP_TRSet();
+    RF231_SLP_TRClr(); 
+
+    rf231_rx_on();
+
+    return 0;
+}
+
+/* Prepare and transmit a packet */
+int rf231_send(const uint8_t *data, uint8_t len) {
+
+	if (rf231_prepare(data, len) == -1 || rf231_transmit() == -1)
+	{
+		printf("Fail to send ...\r\n");
+		return -1;
+	} else {
+
+		return 0;
+	}
+}
+
+/* Read/parse a received packet into buf with bufsize */
+int rf231_read() {
+
+    uint8_t len = rxframe[rxframe_head].length;
+
+	/* TODO: currently RF231_MAX_FRAME_LENGTH is set to 127, but data length should be less than 125, because we use automatically FCS */
+    if(len > RF231_MAX_FRAME_LENGTH || len <= RF231_MIN_FRAME_LENGTH) {
+	    printf("Invalid length ...\r\n");
+        flush_rxframe_buffer();
+        return -1;
+    }
+
+#ifdef PRKMCS_ENABLE
+	prkmcs_receive();
+#endif // PRKMCS_ENABLE
+
+#ifdef PRKS_ENABLE
+	prks_receive();
+#endif // PRKS_ENABLE
+
+#ifdef TMCP_ENABLE
+	tmcp_receive();
+#endif // TMCP_ENABLE
+
+#ifdef TSCH_ENABLE
+	tsch_receive();
+#endif // TSCH_ENABLE
+
+#ifdef ARCH_ENABLE
+	arch_receive();
+#endif // ARCH_ENABLE
+
+#ifdef MINMAX_ENABLE
+	minmax_receive();
+#endif // MINMAX_ENABLE
+
+    flush_rxframe_buffer();
+
+    return 0; 
+}
+
+/* Perform a CCA to find out if there is a packet in the air or not*/
+uint8_t rf231_channel_clear(uint8_t mode, uint8_t threshold) {
+
+    uint8_t cca = 0;
+	// Keep radio in RX_ON state
+	uint8_t val = ReadRegister(RF231_PHY_RX_SYN);
+	WriteRegister(RF231_PHY_RX_SYN, 0x80 | val);
+
+	rf231_rx_on();
+
+	// set ED threshold for modes with ED detection
+	if (mode != RF231_CCA_2)
+	{
+		WriteRegister(RF231_PHY_CCA_THRES, threshold);
+	}
+    /* CCA should be done in RX state */
+    /* Initiate CCA*/
+	// the channel should not be changed
+	val = ReadRegister(RF231_PHY_CC_CCA) & 0x1F;
+    WriteRegister(RF231_PHY_CC_CCA, 0x80 | mode | val);
+    delay_us(140);
+    while ((cca & 0x80) == 0) {
+        cca = ReadRegister(RF231_TRX_STATUS);
+    }
+
+	val = ReadRegister(RF231_PHY_RX_SYN);
+	WriteRegister(RF231_PHY_RX_SYN, 0x7F & val);
+
+    return (cca & 0x40);
+}
+
+
+
+/*========Functions used to set and get RF231 transmission power========*/
+
+void SetPower(uint8_t power)
+{
+	if (power > RF231_TX_PWR_MIN) 
+	{
+	    printf("Invalid power setting ...\r\n");
+	    return;
+    }
+
+    uint8_t Reg = ReadRegister(RF231_PHY_TX_PWR);
+    Reg &= 0xF0;
+    power |= Reg;
+    WriteRegister(RF231_PHY_TX_PWR, power); 
+}
+
+uint8_t GetPower()
+{
+    uint8_t power;
+    power = ReadRegister(RF231_PHY_TX_PWR);
+    power &= 0x0F;
+    return power;
+}
+
+/*========Functions used to set and get RF231 transmission channel========*/
+
+void SetChannel(uint8_t channel)
+{
+    if(channel < RF231_CHANNEL_11 || channel > RF231_CHANNEL_26) 
+    {
+	    printf("Invalid channel setting ...\r\n");
+	    return;
+    }
+
+    uint8_t Reg = ReadRegister(RF231_PHY_CC_CCA); 
+    Reg &= 0xE0;
+    channel |= Reg;
+    WriteRegister(RF231_PHY_CC_CCA, channel);
+    
+}
+
+uint8_t GetChannel()
+{
+    uint8_t channel;
+    channel = ReadRegister(RF231_PHY_CC_CCA);
+    channel &= 0x1F;
+    return channel;
+}
+
+/*========Functions used to get status of RF231========*/
+
+/* Get the radio status */
+uint8_t RF231_GetStatus()
+{
+    return ReadRegister(RF231_TRX_STATUS) & RF231_TRX_STATUS_MASK__TRX_STATUS;
+}
+
+/* Write the state control command to TRX_STATE */
+void RF231_StateCtrl(uint8_t cmd)
+{
+    uint8_t Reg = ReadRegister(RF231_TRX_STATE);
+    Reg &= 0xE0;
+    Reg |= cmd;
+    WriteRegister(RF231_TRX_STATE, Reg);
+} 
+
+/* Set the radio be in SLEEP status */
+void rf231_sleep(void) 
+{
+	rf231_trx_off();
+	RF231_SLP_TRSet();
+}
+
+/* Set the radio be in TRX_OFF status */
+void rf231_trx_off()
+{
+	if (RF231_GetSLP_TR() != 0)
+	{
+		RF231_SLP_TRClr();
+	}
+	if (RF231_GetRST() != 1)
+	{
+		RF231_RSTSet();
+	}
+	uint8_t status = RF231_GetStatus();
+	while (status != RF231_TRX_STATUS__TRX_OFF)
+	{
+		switch (status) {
+		case RF231_TRX_STATUS__RX_ON_NOCLK:
+		case RF231_TRX_STATUS__RX_AACK_ON_NOCLK:
+			RF231_SLP_TRClr();
+			break;
+		case RF231_TRX_STATUS__P_ON:
+		case RF231_TRX_STATUS__PLL_ON:
+		case RF231_TRX_STATUS__RX_ON:
+		case RF231_TRX_STATUS__RX_AACK_ON:
+		case RF231_TRX_STATUS__TX_ARET_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__TRX_OFF);
+			break;
+		default:
+			break;
+		}
+		status = RF231_GetStatus();
+	}
+}
+
+void rf231_tx_on(void)
+{
+	if (RF231_GetSLP_TR() != 0)
+	{
+		RF231_SLP_TRClr();
+	}
+	if (RF231_GetRST() != 1)
+	{
+		RF231_RSTSet();
+	}
+	uint8_t status = RF231_GetStatus();
+	while (status != RF231_TRX_STATUS__PLL_ON)
+	{
+		switch (status) {
+		case RF231_TRX_STATUS__RX_ON_NOCLK:
+			RF231_SLP_TRClr();
+			break;
+		case RF231_TRX_STATUS__RX_AACK_ON_NOCLK:
+			RF231_SLP_TRClr();
+			break;
+		case RF231_TRX_STATUS__P_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__TRX_OFF);
+			break;
+		case RF231_TRX_STATUS__TRX_OFF:
+			RF231_StateCtrl(RF231_TRX_STATE__PLL_ON);
+			break;
+		case RF231_TRX_STATUS__RX_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__PLL_ON);
+			break;
+		case RF231_TRX_STATUS__RX_AACK_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__PLL_ON);
+			break;
+		case RF231_TRX_STATUS__TX_ARET_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__PLL_ON);
+			break;
+		default:
+			break;
+		}
+		status = RF231_GetStatus();
+	}
+}
+
+/* Set Radio to be in RX_ON status */
+void rf231_rx_on(void) 
+{
+	if (RF231_GetSLP_TR() != 0)
+	{
+		RF231_SLP_TRClr();
+	}
+	if (RF231_GetRST() != 1)
+	{
+		RF231_RSTSet();
+	}
+	uint8_t status = RF231_GetStatus();
+	while(status != RF231_TRX_STATUS__RX_ON)
+	{
+		switch (status) {
+		case RF231_TRX_STATUS__RX_ON_NOCLK:
+			RF231_SLP_TRClr();
+			break;
+		case RF231_TRX_STATUS__RX_AACK_ON_NOCLK:
+			RF231_SLP_TRClr();
+			break;
+		case RF231_TRX_STATUS__P_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__TRX_OFF);
+			break;
+		case RF231_TRX_STATUS__TRX_OFF:
+			RF231_StateCtrl(RF231_TRX_STATE__RX_ON);
+			break;
+		case RF231_TRX_STATUS__PLL_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__RX_ON);
+			break;
+		case RF231_TRX_STATUS__RX_AACK_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__PLL_ON);
+			break;
+		case RF231_TRX_STATUS__TX_ARET_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__PLL_ON);
+			break;
+		default:
+			break;
+		}
+		status = RF231_GetStatus();
+	}
+}
+
+void rf231_tx_aret_on()
+{
+	if (RF231_GetSLP_TR() != 0)
+	{
+		RF231_SLP_TRClr();
+	}
+	if (RF231_GetRST() != 1)
+	{
+		RF231_RSTSet();
+	}
+	uint8_t status = RF231_GetStatus();
+	while (status != RF231_TRX_STATUS__TX_ARET_ON)
+	{
+		switch (status) {
+		case RF231_TRX_STATUS__RX_ON_NOCLK:
+			RF231_SLP_TRClr();
+			break;
+		case RF231_TRX_STATUS__RX_AACK_ON_NOCLK:
+			RF231_SLP_TRClr();
+			break;
+		case RF231_TRX_STATUS__P_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__TRX_OFF);
+			break;
+		case RF231_TRX_STATUS__TRX_OFF:
+			RF231_StateCtrl(RF231_TRX_STATE__TX_ARET_ON);
+			break;
+		case RF231_TRX_STATUS__PLL_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__TX_ARET_ON);
+			break;
+		case RF231_TRX_STATUS__RX_AACK_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__TRX_OFF);
+			break;
+		case RF231_TRX_STATUS__RX_ON:
+			RF231_StateCtrl(RF231_TRX_STATE__TRX_OFF);
+			break;
+		default:
+			break;
+		}
+		status = RF231_GetStatus();
+	}	
+}
+
+/* This function update the rxframe_buffer state after reading*/
+void flush_rxframe_buffer(void) {
+    rxframe[rxframe_head].length = 0;
+    ++rxframe_head;
+	
+    if(rxframe_head >= RF231_CONF_RX_BUFFERS) {
+        rxframe_head = 0;
+    }
+
+    if(rxframe[rxframe_head].length) {
+        /* Call rf231_interrupt to poll the process reading rxframe_buffer */
+	    rf231_read();
+    }
+}
+
+/*========Functions used to init and change RF231 status========*/
+
+/* Reset radio to default status */
+void rf231_config(void) {
+	ReadRegister(RF231_IRQ_STATUS);
+    WriteRegister(RF231_IRQ_MASK, DEFAULT_INTERRUPTS);
+	
+    /* Enable interrupt polling and set IRQ low active */
+	/* PA_EXT_EN -- 0, IRQ_2_EXT_EN -- 0, TX_AUTO_CRC_ON -- 1, , RX_BL_CTRL -- 0: 2
+	 * SPI_CMD_MODE -- 00, IRQ_MASK_MODE -- 0, IRQ_POLARITY -- 1: 1
+	 */
+    WriteRegister(RF231_TRX_CTRL_1, 0x21);
+}
+ 
+/*========Functions related to RSSI========*/
+uint8_t rf231_get_rssi(void) {
+	return (ReadRegister(RF231_PHY_RSSI) & 0x1F);
+}
+
+uint8_t rf231_crc_valid(void)
+{
+	return (ReadRegister(RF231_PHY_RSSI) & 0x80);
+}
+
+/* manually init energy detection */
+void rf231_init_ed()
+{
+	WriteRegister(RF231_PHY_ED_LEVEL, 0);
+}
+
+/* get the energy detection value */
+uint8_t rf231_get_ed()
+{
+	return ReadRegister(RF231_PHY_ED_LEVEL);
+}
+
+/* set interrupts */
+void rf231_enable_interrupt(uint8_t interrupt) 
+{
+	ReadRegister(RF231_IRQ_STATUS);
+	WriteRegister(RF231_IRQ_MASK, interrupt);
+}
+
+void rf231_disable_interrupt()
+{
+	WriteRegister(RF231_IRQ_MASK, 0);
+}
+
+PROCESS_NAME(rf231_process);
+rtimer_clock_t reception_time, network_time;
+static uint16_t time_synch_seq_no, last_time_synch_seq_no;
+void EXTI1_IRQHandler(void)
+{
+	uint8_t rx_rssi;
+	if (EXTI_GetITStatus(EXTI_Line1) != RESET) {
+		EXTI_ClearITPendingBit(EXTI_Line1);
+
+		uint8_t interrupt_source = ReadRegister(RF231_IRQ_STATUS);
+		if (interrupt_source & RF231_RX_START_MASK)
+		{
+			reception_time = RTIMER_NOW();
+			rxframe[rxframe_tail].tx_ed = rf231_get_ed();
+
+		}
+		else if (interrupt_source & RF231_TRX_END_MASK)
+		{
+			if (RF231_GetStatus() == RF231_TRX_STATUS__RX_ON && rf231_crc_valid())
+			{
+				rf231_init_ed();
+				ReadFrame(&rxframe[rxframe_tail]);
+				uint8_t *ptr = rxframe[rxframe_tail].data;
+
+				if (*ptr == TIME_SYNCH_BEACON)
+				{
+					ptr += sizeof(uint8_t);
+					memcpy(&network_time, ptr, sizeof(rtimer_clock_t));
+					ptr += sizeof(rtimer_clock_t);
+					memcpy(&time_synch_seq_no, ptr, sizeof(uint16_t));
+					ptr += sizeof(uint16_t);
+
+					if (time_synch_seq_no > last_time_synch_seq_no)
+					{
+						network_time_set(network_time);
+						current_slot_start = network_time;
+						ASN_INIT(current_asn, 0, current_slot_start / PRKMCS_TIMESLOT_LENGTH);
+						last_time_synch_seq_no = time_synch_seq_no;
+
+						if (!prkmcs_is_synchronized || current_asn.ls4b - last_sync_asn.ls4b >= TIME_SYNCH_FREQUENCY)
+						{
+							prkmcs_slot_operation_start();
+						}
+
+						last_sync_asn = current_asn;
+						prkmcs_is_synchronized = 1;
+					}
+					return;
+				}
+
+				rxframe_tail = (rxframe_tail + 1) % RF231_CONF_RX_BUFFERS;
+
+				process_post(&rf231_process, PROCESS_EVENT_POLL, NULL);
+			}
+			else if (RF231_GetStatus() == RF231_TRX_STATUS__TX_ARET_ON)
+			{
+				
+			}
+		}
+		else if (interrupt_source & RF231_CCA_ED_DONE_MASK)
+		{
+			rxframe[rxframe_tail].noise_ed = rf231_get_ed();
+		}
+	}
+}
+/* Process to handle input packets*/
+PROCESS_THREAD(rf231_process, ev, data)
+{
+	PROCESS_BEGIN();
+	while (1) {
+		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+		rf231_read();
+	}
+	PROCESS_END();
+}

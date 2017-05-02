@@ -1,0 +1,223 @@
+/* 
+ * @Author: Pengfei Ren (rpfly0818@gmail.com)
+ * @Updated: 02/11/2016
+ * @Description: controller input: current link PDR; controller output: \delata I;
+ */
+
+#include "core/net/mac/prk-mcs/prkmcs.h"
+
+/* used to compute 1/a(t)*/
+float PDR_SLOPE_TABLE[] = {840.5, 19.3, 11.4, 8.5, 7.0, 6.1, 5.4, 4.9, 4.5, 4.2, 4.0, 3.8, 3.6, 3.5, 3.4, 3.3, 3.1, 3.1, 3.0, 2.9, 2.9, 
+	2.8, 2.8, 2.8, 2.7, 2.7, 2.7, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.5, 2.5, 2.5, 2.5, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.7, 
+	2.7, 2.7, 2.7, 2.8, 2.8, 2.8, 2.9, 2.9, 2.9, 3.0, 3.0, 3.1, 3.1, 3.2, 3.3, 3.3, 3.4, 3.5, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0, 4.1, 4.3, 4.4, 4.6, 
+	4.7, 4.9, 5.1, 5.3, 5.6, 5.8, 6.1, 6.5, 6.9, 7.3, 7.8, 8.4, 9.2, 10.0, 11.1, 12.5, 14.1, 16.4, 19.6, 24.3, 32.3, 619.7, 1233.2, 3429.6};
+
+/* used to compute 1/a_{0} using PDR*/
+float PDR_INV_TABLE[] = {0, 0.36, 0.51, 0.61, 0.69, 0.75, 0.81, 0.86, 0.91, 0.95, 0.99, 1.03, 107, 1.11, 1.14, 1.17, 1.21, 1.24, 1.27, 
+	1.30, 1.33, 1.36, 1.38, 1.41, 1.44, 1.47, 1.49, 1.52, 1.55, 1.57, 1.60, 1.62, 1.65, 1.67, 1.70, 1.73, 1.75, 1.78, 1.80, 1.83, 
+	1.85, 1.88, 1.90, 1.93, 1.96, 1.98, 2.01, 2.03, 2.06, 2.09, 2.11, 2.14, 2.17, 2.20, 2.23, 2.25, 2.28, 2.31, 2.34, 2.37, 2.40, 
+	2.43, 2.46, 2.50, 2.53, 2.56, 2.60, 2.63, 2.67, 2.70, 2.74, 2.78, 2.82, 2.86, 2.90, 2.94, 2.99, 3.03, 3.08, 3.13, 3.18, 3.24, 
+	3.29, 3.35, 3.42, 3.48, 3.55, 3.63, 3.71, 3.80, 3.89, 4.00, 4.12, 4.25, 4.40, 4.58, 4.79, 5.07, 7.53, 16.09, 28.71};
+
+local_link_er_t localLinkERTable[LOCAL_LINK_ER_TABLE_SIZE];
+uint8_t local_link_er_size;
+uint8_t local_er_sending_index;
+
+/***************** Local Link ER Table Management ****************/
+
+/* initialize local link ER table */
+void initLocalLinkERTable() {
+	if (localLinksSize >= LOCAL_LINK_ER_TABLE_SIZE)
+	{
+		do
+		{
+			log_error("The local link ER table is too small.");
+		} while (1);
+	}
+
+	local_link_er_size = localLinksSize;
+
+	for (uint8_t i = 0; i < localLinksSize; ++i) 
+	{
+		if (node_addr == activeLinks[localLinks[i]].sender)
+		{
+			localLinkERTable[i].neighbor = activeLinks[localLinks[i]].receiver;
+			localLinkERTable[i].is_sender = 1;
+		}
+		else
+		{
+			localLinkERTable[i].neighbor = activeLinks[localLinks[i]].sender;
+			localLinkERTable[i].is_sender = 0;
+		}
+		localLinkERTable[i].link_index = localLinks[i];
+		localLinkERTable[i].pdr_req = PDR_REQUIREMENT;
+		localLinkERTable[i].er_version = 0;
+		localLinkERTable[i].sm_index = INVALID_INDEX;
+		localLinkERTable[i].I_edge = INVALID_DBM;
+    }
+}
+
+/* find the local_link_er_index in local link er table according to active link index */
+uint8_t findLocalLinkERTableIndex(uint8_t index) {
+    for(uint8_t i = 0; i < local_link_er_size; i++) 
+    {
+	    if (localLinkERTable[i].link_index == index) 
+	    {
+	        return i;
+        }
+    }
+    return INVALID_INDEX;
+}
+
+// Called to initialize local ER after signal map is built
+void setLocalLinkERTable()
+{
+	uint8_t index;
+	float inbound_gain = INVALID_GAIN, outbound_gain = INVALID_GAIN;
+
+	for (uint8_t i = 0; i < localLinksSize; ++i)
+	{
+		if (localLinkERTable[i].is_sender)
+		{
+			continue;	
+		}
+
+		inbound_gain = getInboundGain(localLinkERTable[i].neighbor);
+		if (inbound_gain == INVALID_GAIN)
+		{
+			return;
+		}
+		localLinkERTable[i].I_edge = powerLevel2dBm(DATA_POWER) - inbound_gain;
+		++(localLinkERTable[i].er_version);
+		localLinkERTable[i].sm_index = index;
+
+		updateConflictGraphForLocalERChange(i);
+	}
+}
+
+
+/*************************** Controller ******************************/
+
+/* compute the delta I for link with @sender; note that this task is executed only by receiver */
+float pdr2DeltaIdB(uint8_t pdr_index, uint8_t local_link_er_index) 
+{
+	float slope_inv;
+	uint8_t link_pdr = pdrTable[pdr_index].pdr, link_pdr_sample = pdrTable[pdr_index].pdr_sample, link_pdr_req = localLinkERTable[local_link_er_index].pdr_req;
+	
+	if (abs(link_pdr - link_pdr_req) > E_0)
+	{
+		slope_inv = (PDR_INV_TABLE[link_pdr_req] - PDR_INV_TABLE[link_pdr]) / (link_pdr_req - link_pdr);
+	}
+	else
+	{
+		slope_inv = PDR_SLOPE_TABLE[link_pdr];
+	}
+	
+	return (ALPHA * link_pdr + (1 - ALPHA) * link_pdr_sample - link_pdr_req) * slope_inv / 100;
+}
+
+/* receiver update ER by computing \delta I */
+void updateER(uint8_t local_link_er_index, uint8_t pdr_index) 
+{
+	if (local_link_er_index == INVALID_INDEX)
+	{
+		log_error("Cannot find given link in local link ER table.");
+		return;
+	}
+
+	float deltaI_dB = pdr2DeltaIdB(pdr_index, local_link_er_index);
+
+	float current_I_edge = localLinkERTable[local_link_er_index].I_edge;
+	float next_I_edge = current_I_edge + deltaI_dB;
+
+	tx_power = powerLevel2dBm(DATA_POWER);
+
+	float total_I = 0;
+	int i = localLinkERTable[local_link_er_index].sm_index;
+
+	if (deltaI_dB < 0)
+	{
+		while(i < valid_sm_entry_size)
+		{
+			total_I += (tx_power - signalMap[i].inbound_gain);
+			if (total_I >= abs(deltaI_dB))
+			{
+				break;
+			}
+			++i;
+		}
+
+		if (i >= valid_sm_entry_size)
+		{
+			i = valid_sm_entry_size - 1;
+		}
+	}
+	else if (deltaI_dB > 0)
+	{
+		while(i >= 0)
+		{
+			total_I += (tx_power - signalMap[i].inbound_gain);
+			if (total_I > abs(deltaI_dB))
+			{
+				break;
+			}
+			--i;
+		}
+		if (i < 0)
+		{
+			i = 0;
+		}
+	}
+	
+	localLinkERTable[local_link_er_index].sm_index = (uint8_t)i;
+	localLinkERTable[local_link_er_index].I_edge = tx_power - signalMap[i].inbound_gain;
+	++(localLinkERTable[local_link_er_index].er_version);
+
+	updateConflictGraphForLocalERChange(local_link_er_index);
+	printf("Delta I %f, I_edge %f\r\n", deltaI_dB, localLinkERTable[local_link_er_index].I_edge);
+}
+
+/* sender update local er by receiving er from receiver */
+void updateLocalER(uint8_t local_link_er_index, uint16_t er_version, uint8_t I_edge)
+{
+	if (er_version > localLinkERTable[local_link_er_index].er_version)
+	{
+		localLinkERTable[local_link_er_index].er_version = er_version;
+		localLinkERTable[local_link_er_index].I_edge = I_edge;
+
+		updateConflictGraphForLocalERChange(local_link_er_index);
+	}
+}
+
+/* controller module initialization */
+void initController() 
+{
+	local_link_er_size = 0;
+	local_er_sending_index = 0;
+	initLocalLinkERTable();
+}
+
+
+void er_receive(uint8_t *ptr)
+{
+	uint8_t link_index;
+	memcpy(&link_index, ptr, sizeof(uint8_t));
+	ptr += sizeof(uint8_t);
+	uint16_t er_version;
+	memcpy(&er_version, ptr, sizeof(uint16_t));
+	ptr += sizeof(uint16_t);
+	float I_edge;
+	memcpy(&I_edge, ptr, sizeof(float));
+	ptr += sizeof(float);
+
+	//log_debug("link index %d -- er_version %d -- I_edge %f", link_index, er_version, I_edge);
+	uint8_t local_link_er_index = findLocalLinkERTableIndex(link_index);
+	if (local_link_er_index == INVALID_INDEX)
+	{
+		updateLinkER(link_index, er_version, I_edge);
+	}
+	else
+	{
+		updateLocalER(local_link_er_index, er_version, I_edge);
+	}
+}

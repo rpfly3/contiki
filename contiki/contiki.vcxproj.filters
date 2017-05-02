@@ -1,0 +1,589 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source files">
+      <UniqueIdentifier>{9fe4d6c7-17d9-4058-bf89-0fbe46621be8}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header files">
+      <UniqueIdentifier>{102547ab-8acb-4b2b-8bb1-a13ed6dec640}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource files">
+      <UniqueIdentifier>{83fed5f8-a151-44c2-942b-4a286838f219}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="Make files">
+      <UniqueIdentifier>{15336265-1706-46d9-b466-cb7ab770ec04}</UniqueIdentifier>
+      <Extensions>*.mak</Extensions>
+    </Filter>
+    <Filter Include="VisualGDB settings">
+      <UniqueIdentifier>{03708784-c5ab-45ad-af5a-8b17417fed4e}</UniqueIdentifier>
+      <Extensions>*.vgdbsettings</Extensions>
+    </Filter>
+    <Filter Include="Source files\Device-specific files">
+      <UniqueIdentifier>{57a4a197-063a-4694-adea-ecb1cf5ef771}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\Device-specific files">
+      <UniqueIdentifier>{a4ed6a99-d29d-4567-ba28-b2b41a341ee1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\Device-specific files\StdPeriph">
+      <UniqueIdentifier>{f4e8bcc4-3233-4fec-80ea-befb6345baed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\Device-specific files\StdPeriph">
+      <UniqueIdentifier>{0490310a-8d93-48db-937f-856b3f33085c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\core">
+      <UniqueIdentifier>{efca50ce-61bc-4699-9cb3-f4a2f2dba4d4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\core">
+      <UniqueIdentifier>{0267b6d1-b528-4baa-af1e-4aae9f428edb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\core\net">
+      <UniqueIdentifier>{c92ee84a-98fb-4724-bee0-a25a47a0ced0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\core\net">
+      <UniqueIdentifier>{111da331-551d-4229-9aee-0a914505792f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\core\sys">
+      <UniqueIdentifier>{e0a07463-4104-4aa8-b198-7c69ce2c6790}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\core\sys">
+      <UniqueIdentifier>{467c2840-d973-412e-8733-32f8f5770372}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\cpu">
+      <UniqueIdentifier>{298229e1-da6a-4dea-8759-1ff6c14d3c39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\cpu">
+      <UniqueIdentifier>{aa4ec50d-e0c4-4071-8692-ee5f08adfd9f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\cpu\arm">
+      <UniqueIdentifier>{88e03483-b2c5-459a-9447-cd4910d0f7de}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\cpu\arm">
+      <UniqueIdentifier>{46565232-ea2a-4aee-920c-429499109a75}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\cpu\arm\stm32f103">
+      <UniqueIdentifier>{37001dea-5f70-433b-9ab6-ab60ea4fb742}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\cpu\arm\stm32f103">
+      <UniqueIdentifier>{fad6fceb-da5f-4ffb-b6e6-578a2b200c6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\platform">
+      <UniqueIdentifier>{b61fca5a-c718-4815-8d88-18b1aca3d012}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\platform">
+      <UniqueIdentifier>{a6bc2245-86ca-4697-8fc9-2f5c60c0aa9a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\platform\now">
+      <UniqueIdentifier>{4c665380-3ff1-4d33-bcbf-23b27786ac70}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\platform\now">
+      <UniqueIdentifier>{152ea4bd-facd-491a-bf40-48966ca4ba7f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\core\lib">
+      <UniqueIdentifier>{28990903-1267-4942-aa56-73340048d80a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\core\lib">
+      <UniqueIdentifier>{1e0f7136-24c2-487c-9891-c7225d8034ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\core\net\mac">
+      <UniqueIdentifier>{9b1fc4db-160d-439f-bea0-615f1f3caff0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\core\net\mac">
+      <UniqueIdentifier>{057201cc-1167-4edc-b4dc-a928b8dbbe81}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\core\net\mac\prk-mcs">
+      <UniqueIdentifier>{e87af0ac-aeed-4628-a5d0-c0c97a890b98}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\core\net\mac\prk-mcs">
+      <UniqueIdentifier>{0fe75643-ffa1-4105-87fd-17f2bb3119b2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source files\core\dev">
+      <UniqueIdentifier>{d3990da1-68de-4264-b7ba-7aa2c9868f6f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header files\core\dev">
+      <UniqueIdentifier>{6ba6d5a3-01c9-49a3-bb5c-82daa46ed00b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="system_stm32f10x.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\StartupFiles\startup_stm32f103xg.c">
+      <Filter>Source files\Device-specific files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\misc.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_adc.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_bkp.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_can.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_cec.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_crc.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_dac.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_dbgmcu.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_dma.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_exti.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_flash.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_fsmc.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_gpio.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_i2c.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_iwdg.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_pwr.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_rcc.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_rtc.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_sdio.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_spi.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_tim.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_usart.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\src\stm32f10x_wwdg.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\CMSIS_StdPeriph\CM3\CoreSupport\core_cm3.c">
+      <Filter>Source files\Device-specific files\StdPeriph</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\linkaddr.c">
+      <Filter>Source files\core\net</Filter>
+    </ClCompile>
+    <ClCompile Include="core\sys\arg.c">
+      <Filter>Source files\core\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="core\sys\autostart.c">
+      <Filter>Source files\core\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="core\sys\energest.c">
+      <Filter>Source files\core\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="core\sys\etimer.c">
+      <Filter>Source files\core\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="core\sys\mt.c">
+      <Filter>Source files\core\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="core\sys\process.c">
+      <Filter>Source files\core\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="core\sys\procinit.c">
+      <Filter>Source files\core\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="core\sys\rtimer.c">
+      <Filter>Source files\core\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="core\sys\stimer.c">
+      <Filter>Source files\core\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="core\sys\timer.c">
+      <Filter>Source files\core\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="cpu\arm\stm32f103\clock.c">
+      <Filter>Source files\cpu\arm\stm32f103</Filter>
+    </ClCompile>
+    <ClCompile Include="cpu\arm\stm32f103\rtimer-arch.c">
+      <Filter>Source files\cpu\arm\stm32f103</Filter>
+    </ClCompile>
+    <ClCompile Include="platform\now\usart1.c">
+      <Filter>Source files\platform\now</Filter>
+    </ClCompile>
+    <ClCompile Include="platform\now\systemcalls.c">
+      <Filter>Source files\platform\now</Filter>
+    </ClCompile>
+    <ClCompile Include="cpu\arm\stm32f103\stm32f10x_it.c">
+      <Filter>Source files\cpu\arm\stm32f103</Filter>
+    </ClCompile>
+    <ClCompile Include="platform\now\delay.c">
+      <Filter>Source files\platform\now</Filter>
+    </ClCompile>
+    <ClCompile Include="platform\now\spi1.c">
+      <Filter>Source files\platform\now</Filter>
+    </ClCompile>
+    <ClCompile Include="platform\now\rf231-arch.c">
+      <Filter>Source files\platform\now</Filter>
+    </ClCompile>
+    <ClCompile Include="core\lib\crc16.c">
+      <Filter>Source files\core\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="platform\now\rf231.c">
+      <Filter>Source files\platform\now</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\mac\prk-mcs\prkmcs.c">
+      <Filter>Source files\core\net\mac\prk-mcs</Filter>
+    </ClCompile>
+    <ClCompile Include="core\lib\list.c">
+      <Filter>Source files\core\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="core\lib\ringbufindex.c">
+      <Filter>Source files\core\lib</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\mac\mac.c">
+      <Filter>Source files\core\net\mac</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\mac\prk-mcs\slotoperation.c">
+      <Filter>Source files\core\net\mac\prk-mcs</Filter>
+    </ClCompile>
+    <ClCompile Include="cpu\arm\stm32f103\eeprom.c">
+      <Filter>Source files\cpu\arm\stm32f103</Filter>
+    </ClCompile>
+    <ClCompile Include="cpu\arm\stm32f103\nodeid.c">
+      <Filter>Source files\cpu\arm\stm32f103</Filter>
+    </ClCompile>
+    <ClCompile Include="main.c">
+      <Filter>Source files</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\mac\prk-mcs\test.c">
+      <Filter>Source files\core\net\mac\prk-mcs</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\mac\prk-mcs\timesynch.c">
+      <Filter>Source files\core\net\mac\prk-mcs</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\mac\prk-mcs\onama.c">
+      <Filter>Source files\core\net\mac\prk-mcs</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\mac\prk-mcs\topology.c">
+      <Filter>Source files\core\net\mac\prk-mcs</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\mac\prk-mcs\controller.c">
+      <Filter>Source files\core\net\mac\prk-mcs</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\mac\prk-mcs\linkestimate.c">
+      <Filter>Source files\core\net\mac\prk-mcs</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\mac\prk-mcs\protocolsignaling.c">
+      <Filter>Source files\core\net\mac\prk-mcs</Filter>
+    </ClCompile>
+    <ClCompile Include="core\net\mac\prk-mcs\signalmap.c">
+      <Filter>Source files\core\net\mac\prk-mcs</Filter>
+    </ClCompile>
+    <ClCompile Include="core\sys\ctimer.c">
+      <Filter>Source files\core\sys</Filter>
+    </ClCompile>
+    <ClCompile Include="cpu\arm\stm32f103\watchdog.c">
+      <Filter>Source files\cpu\arm\stm32f103</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Makefile" />
+    <None Include="debug.mak">
+      <Filter>Make files</Filter>
+    </None>
+    <None Include="contiki-Debug.vgdbsettings">
+      <Filter>VisualGDB settings</Filter>
+    </None>
+    <None Include="release.mak">
+      <Filter>Make files</Filter>
+    </None>
+    <None Include="contiki-Release.vgdbsettings">
+      <Filter>VisualGDB settings</Filter>
+    </None>
+    <None Include="stm32.mak">
+      <Filter>Source files\Device-specific files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\misc.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_adc.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_bkp.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_can.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_cec.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_crc.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_dac.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_dbgmcu.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_dma.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_exti.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_flash.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_fsmc.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_gpio.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_i2c.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_iwdg.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_pwr.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_rcc.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_rtc.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_sdio.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_spi.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_tim.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_usart.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\STM32F10x_StdPeriph_Driver\inc\stm32f10x_wwdg.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\CMSIS_StdPeriph\CM3\CoreSupport\core_cm3.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\CMSIS_StdPeriph\CM3\DeviceSupport\ST\STM32F10x\stm32f10x.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\AppData\Local\VisualGDB\EmbeddedBSPs\arm-eabi\com.sysprogs.arm.stm32\STM32F1xxxx\CMSIS_StdPeriph\CM3\DeviceSupport\ST\STM32F10x\system_stm32f10x.h">
+      <Filter>Header files\Device-specific files\StdPeriph</Filter>
+    </ClInclude>
+    <ClInclude Include="core\contiki-default-conf.h">
+      <Filter>Header files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\contiki-lib.h">
+      <Filter>Header files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\contiki-net.h">
+      <Filter>Header files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\contiki-version.h">
+      <Filter>Header files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\contiki.h">
+      <Filter>Header files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\linkaddr.h">
+      <Filter>Header files\core\net</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\arg.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\autostart.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\cc.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\clock.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\dsc.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\energest.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\etimer.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\lc-addrlabels.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\lc-switch.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\lc.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\loader.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\log.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\mt.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\node-id.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\process.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\procinit.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\pt-sem.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\pt.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\rtimer.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\stimer.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\subprocess.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\timer.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="cpu\arm\stm32f103\mtarch.h">
+      <Filter>Header files\cpu\arm\stm32f103</Filter>
+    </ClInclude>
+    <ClInclude Include="cpu\arm\stm32f103\rtimer-arch.h">
+      <Filter>Header files\cpu\arm\stm32f103</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\now\contiki-conf.h">
+      <Filter>Header files\platform\now</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\now\platform-conf.h">
+      <Filter>Header files\platform\now</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\now\usart1.h">
+      <Filter>Header files\platform\now</Filter>
+    </ClInclude>
+    <ClInclude Include="cpu\arm\stm32f103\stm32f10x_it.h">
+      <Filter>Header files\cpu\arm\stm32f103</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\now\delay.h">
+      <Filter>Header files\platform\now</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\now\spi1.h">
+      <Filter>Header files\platform\now</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\now\rf231-arch.h">
+      <Filter>Header files\platform\now</Filter>
+    </ClInclude>
+    <ClInclude Include="core\lib\crc16.h">
+      <Filter>Header files\core\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="platform\now\rf231.h">
+      <Filter>Header files\platform\now</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\prk-mcs\asn.h">
+      <Filter>Header files\core\net\mac\prk-mcs</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\prk-mcs\prkmcs.h">
+      <Filter>Header files\core\net\mac\prk-mcs</Filter>
+    </ClInclude>
+    <ClInclude Include="core\lib\list.h">
+      <Filter>Header files\core\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="core\lib\ringbufindex.h">
+      <Filter>Header files\core\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\mac.h">
+      <Filter>Header files\core\net\mac</Filter>
+    </ClInclude>
+    <ClInclude Include="core\dev\radio.h">
+      <Filter>Header files\core\dev</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\prk-mcs\slotoperation.h">
+      <Filter>Header files\core\net\mac\prk-mcs</Filter>
+    </ClInclude>
+    <ClInclude Include="cpu\arm\stm32f103\eeprom.h">
+      <Filter>Header files\cpu\arm\stm32f103</Filter>
+    </ClInclude>
+    <ClInclude Include="cpu\arm\stm32f103\nodeid.h">
+      <Filter>Header files\cpu\arm\stm32f103</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="debug.h">
+      <Filter>Header files</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\prk-mcs\test.h">
+      <Filter>Header files\core\net\mac\prk-mcs</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\prk-mcs\timesynch.h">
+      <Filter>Header files\core\net\mac\prk-mcs</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\prk-mcs\onama.h">
+      <Filter>Header files\core\net\mac\prk-mcs</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\prk-mcs\topology.h">
+      <Filter>Header files\core\net\mac\prk-mcs</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\prk-mcs\controller.h">
+      <Filter>Header files\core\net\mac\prk-mcs</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\prk-mcs\linkestimate.h">
+      <Filter>Header files\core\net\mac\prk-mcs</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\prk-mcs\protocolsignaling.h">
+      <Filter>Header files\core\net\mac\prk-mcs</Filter>
+    </ClInclude>
+    <ClInclude Include="core\net\mac\prk-mcs\signalmap.h">
+      <Filter>Header files\core\net\mac\prk-mcs</Filter>
+    </ClInclude>
+    <ClInclude Include="core\sys\ctimer.h">
+      <Filter>Header files\core\sys</Filter>
+    </ClInclude>
+    <ClInclude Include="core\dev\watchdog.h">
+      <Filter>Header files\core\dev</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Xml Include="stm32.xml">
+      <Filter>VisualGDB settings</Filter>
+    </Xml>
+  </ItemGroup>
+</Project>
