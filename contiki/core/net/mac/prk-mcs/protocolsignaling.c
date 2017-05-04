@@ -32,28 +32,28 @@ void initLinkERTable()
 					activeLinks[j].receiver == activeLinks[localLinks[i]].sender ||
 					activeLinks[j].receiver == activeLinks[localLinks[i]].receiver)
 				{				
-					// already added to linker er table but conflict with another link
-					if (added)
-					{
-						linkERTable[link_er_size].conflict_flag |= (1 << i);	
-						linkERTable[link_er_size].primary |= (1 << i);	
-					}
-					else
+					// already added to link er table but conflict with another link
+					if (!added)
 					{
 						linkERTable[link_er_size].sender = activeLinks[j].sender;
 						linkERTable[link_er_size].receiver = activeLinks[j].receiver;
 						linkERTable[link_er_size].link_index = j;
-						linkERTable[link_er_size].conflict_flag = 0;
-						linkERTable[link_er_size].conflict_flag |= (1 << i);
 						linkERTable[link_er_size].primary = 0;
 						linkERTable[link_er_size].primary |= (1 << i);
 						linkERTable[link_er_size].er_version = 0;
 						linkERTable[link_er_size].I_edge = INVALID_DBM;
 
 						added = 1;
-						++link_er_size;	
+					}
+					else
+					{
+						linkERTable[link_er_size].primary |= (1 << i);	
 					}
 				}
+			}
+			if (added)
+			{
+				++link_er_size;	
 			}
 		}
 	}
@@ -89,12 +89,13 @@ void updateLinkER(uint8_t link_index, uint16_t er_version, float I_edge)
 		linkERTable[link_er_index].sender = activeLinks[link_index].sender;
 		linkERTable[link_er_index].receiver = activeLinks[link_index].receiver;
 		linkERTable[link_er_index].link_index = link_index;
+		linkERTable[link_er_index].secondary = 0;
 		linkERTable[link_er_index].er_version = er_version;
 		linkERTable[link_er_index].I_edge = I_edge;
 
 		++link_er_size;
 
-		updateConflictGraphForERChange(link_index);
+		updateConflictGraphForERChange(link_er_index);
 	}
 	else
 	{
@@ -103,7 +104,7 @@ void updateLinkER(uint8_t link_index, uint16_t er_version, float I_edge)
 			linkERTable[link_er_index].er_version = er_version;
 			linkERTable[link_er_index].I_edge = I_edge;
 
-			updateConflictGraphForERChange(link_index);
+			updateConflictGraphForERChange(link_er_index);
 		}
 	}
 }
@@ -160,11 +161,11 @@ void updateConflictGraphForLocalERChange(uint8_t local_link_er_index)
 		// Only update secondary conflict relations
 		if (isConflicting(i, local_link_er_index))
 		{
-			linkERTable[i].conflict_flag |= (1 << local_link_er_index);
+			linkERTable[i].secondary |= (1 << local_link_er_index);
 		}
 		else
 		{
-			linkERTable[i].conflict_flag &= ~(1 << local_link_er_index);
+			linkERTable[i].secondary &= ~(1 << local_link_er_index);
 		}
 	}
 }
@@ -182,11 +183,11 @@ void updateConflictGraphForERChange(uint8_t link_er_index)
 		// Only update secondary conflict relations
 		if (isConflicting(link_er_index, i))
 		{
-			linkERTable[link_er_index].conflict_flag |= (1 << i);
+			linkERTable[link_er_index].secondary |= (1 << i);
 		}
 		else
 		{
-			linkERTable[link_er_index].conflict_flag &= ~(1 << i);
+			linkERTable[link_er_index].secondary &= ~(1 << i);
 		}
 	}
 }

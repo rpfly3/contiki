@@ -110,7 +110,7 @@ extern uint8_t rf231_rx_buffer_head, rf231_rx_buffer_tail;
 extern rx_frame_t rf231_rx_buffer[RF231_CONF_RX_BUFFERS];
 
 /* channel info defined in prkmcs main module */
-extern uint8_t inactive_channels[CHANNEL_NUM]; // record the channel state for scheduling
+extern uint8_t channel_status[CHANNEL_NUM]; // record the channel state for scheduling
 
 /* link er table */
 extern link_er_t linkERTable[LINK_ER_TABLE_SIZE];

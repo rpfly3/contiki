@@ -5,27 +5,42 @@
  */
 #include "core/net/mac/prk-mcs/prkmcs.h"
 
-uint8_t inactive_channels[CHANNEL_NUM];
+uint8_t channel_status[CHANNEL_NUM];
 
 /******************* LAMA *********************/
 
 /* compute LAMA priority. For efficiency, we use uint8_t priority */
-static uint8_t computePriority(uint8_t index, struct asn_t time_slot, uint8_t channel) 
+static uint16_t computePriority(uint8_t index, struct asn_t time_slot, uint8_t channel) 
 {
-	return index ^ (uint8_t)time_slot.ls4b ^ channel;
+	uint16_t priority;
+	uint8_t seed;
+	if (channel != INVALID_CHANNEL)
+	{
+		//priority = ((index ^ (uint8_t)time_slot.ls4b ^ channel) << 4) % 255;
+		seed = index ^ (uint8_t)time_slot.ls4b ^ channel;
+	}
+	else
+	{
+		//priority = ((index ^ (uint8_t)time_slot.ls4b) << 8) % 255 + index;
+		seed = index ^ (uint8_t)time_slot.ls4b;
+	}
+
+	srand(seed);
+	priority = ((uint8_t)rand() << 8) + index;
+	return priority;
 }
 
 static void resetChannel()
 {
 	for (uint8_t i = 0; i < CHANNEL_NUM; ++i)
 	{
-		if (i == 4 || i == 9 || i == 14)
+		if (i != 15)
 		{
-			inactive_channels[i] = AVAILABLE;
+			channel_status[i] = AVAILABLE;
 		}
 		else
 		{
-			inactive_channels[i] = UNAVAILABLE;
+			channel_status[i] = UNAVAILABLE;
 		}
 	}
 }
@@ -35,35 +50,26 @@ void runLama(struct asn_t current_slot) {
 	// Reset channel status
 	resetChannel();
 		
-	uint8_t channel_count = 0;
-	uint8_t prio, my_prio = 0, my_prio_in_channel;
+	uint16_t prio, my_prio = 0;
+	uint8_t local_link_er_index;
 	// Select one link first from primary conflict links of this node
 	for (uint8_t j = 0; j < localLinksSize; ++j)
 	{
-		prio = localLinks[j] ^ (uint8_t)current_slot.ls4b;
+		prio = computePriority(localLinks[j], current_slot, INVALID_CHANNEL);
 		if (prio > my_prio)
 		{
 			my_prio = prio;
 			my_link_index = localLinks[j];
+			local_link_er_index = j;
 		}
 	}
 
-	uint8_t local_link_er_index = findLocalLinkERTableIndex(my_link_index);
-	if (local_link_er_index == INVALID_INDEX)
-	{
-		log_error("The link is not found in local link er table");
-		my_link_index = INVALID_INDEX;
-		data_channel = INVALID_CHANNEL;
-		return;
-	}
-	
 	for (uint8_t j = 0; j < link_er_size; ++j)
 	{
-		//if (linkERTable[j].conflict_flag & (1 << local_link_er_index))
-		if ((linkERTable[j].conflict_flag & (1 << local_link_er_index)) && (linkERTable[j].primary & (1 << local_link_er_index)))
+		if (linkERTable[j].primary & (1 << local_link_er_index))
 		{
 			// Compare the selected link with its primary conflict links
-			uint8_t prio = linkERTable[j].link_index ^ (uint8_t)current_slot.ls4b;
+			prio = computePriority(linkERTable[j].link_index, current_slot, INVALID_CHANNEL);
 			if (prio > my_prio)
 			{
 				// when a primary conflict link is scheduled, this link is unschedulable
@@ -74,36 +80,44 @@ void runLama(struct asn_t current_slot) {
 		}
 	}
 
-	//data_channel = RF231_CHANNEL_25;
+	uint8_t channel_count = CHANNEL_NUM - 1;
+
+	
+	/*
+	 * The current issue is that sender and receiver of a link don't switch to the same channel. The main reason is:
+	 * Sender and receiver have different conflict information.
+	 */
+
 	// In data channel, schedule one link basing on conflict graph
 	for (uint8_t i = 0; i < CHANNEL_NUM; ++i)
 	{
-		if (inactive_channels[i] == UNAVAILABLE)
+		if (channel_status[i] == UNAVAILABLE)
 		{
 			continue;
 		}
 
-		my_prio_in_channel = my_prio ^ (i + RF231_CHANNEL_MIN);
+		my_prio = computePriority(my_link_index, current_slot, i + RF231_CHANNEL_MIN);
 		for (uint8_t j = 0; j < link_er_size; ++j)
 		{
-			if ((linkERTable[j].conflict_flag & (1 << local_link_er_index)) && !(linkERTable[j].primary & (1 << local_link_er_index)))
+			if (linkERTable[j].primary & (1 << local_link_er_index))
 			{
-				// Compare the selected link with its primary conflict links
-				uint8_t prio = computePriority(linkERTable[j].link_index, current_slot, i + RF231_CHANNEL_MIN);
-				if (prio > my_prio_in_channel)
+				continue;
+			}
+
+			// Compare the selected link with its secondary conflict links
+			if (linkERTable[j].secondary & (1 << local_link_er_index))
+			{
+				prio = computePriority(linkERTable[j].link_index, current_slot, i + RF231_CHANNEL_MIN);
+				if (prio > my_prio)
 				{
-					inactive_channels[i] = UNAVAILABLE;
+					channel_status[i] = UNAVAILABLE;
+					//log_debug("Channel %u is not available", i + RF231_CHANNEL_MIN);
+					--channel_count;
 					break;
 				}
 			}
 		}	
-		// Record the scheduling result
-		if (inactive_channels[i] == AVAILABLE)
-		{
-			++channel_count;
-		}
 	}
-
 	
 	if (channel_count == 0)
 	{
@@ -112,19 +126,19 @@ void runLama(struct asn_t current_slot) {
 		return;
 	}
 
-	my_prio_in_channel = 0;
+	my_prio = 0;
 	for (uint8_t i = 0; i < CHANNEL_NUM; i++)
 	{
-		if (inactive_channels[i] == UNAVAILABLE)
+		if (channel_status[i] == UNAVAILABLE)
 		{
 			continue;
 		}
 		else
 		{
-			prio = my_prio ^ (i + RF231_CHANNEL_MIN);
-			if (prio > my_prio_in_channel)
+			prio = computePriority(my_link_index, current_slot, i + RF231_CHANNEL_MIN);
+			if (prio > my_prio)
 			{
-				my_prio_in_channel = prio;
+				my_prio = prio;
 				data_channel = i + RF231_CHANNEL_MIN;
 			}
 		}
