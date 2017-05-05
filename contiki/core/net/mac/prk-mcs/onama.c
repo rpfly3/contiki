@@ -10,7 +10,7 @@ uint8_t channel_status[CHANNEL_NUM];
 /******************* LAMA *********************/
 
 /* compute LAMA priority. For efficiency, we use uint8_t priority */
-static uint16_t computePriority(uint8_t index, struct asn_t time_slot, uint8_t channel) 
+static uint16_t linkPriority(uint8_t index, struct asn_t time_slot, uint8_t channel) 
 {
 	uint16_t priority;
 	uint8_t seed;
@@ -27,6 +27,15 @@ static uint16_t computePriority(uint8_t index, struct asn_t time_slot, uint8_t c
 
 	srand(seed);
 	priority = ((uint8_t)rand() << 8) + index;
+	return priority;
+}
+
+static uint16_t channelPriority(uint8_t index, struct asn_t time_slot, uint8_t channel)
+{
+	uint16_t priority;
+	uint8_t seed = index ^ (uint8_t)time_slot.ls4b ^ channel;
+	srand(seed);
+	priority = ((uint8_t)rand() << 8) + channel;
 	return priority;
 }
 
@@ -55,7 +64,7 @@ void runLama(struct asn_t current_slot) {
 	// Select one link first from primary conflict links of this node
 	for (uint8_t j = 0; j < localLinksSize; ++j)
 	{
-		prio = computePriority(localLinks[j], current_slot, INVALID_CHANNEL);
+		prio = linkPriority(localLinks[j], current_slot, INVALID_CHANNEL);
 		if (prio > my_prio)
 		{
 			my_prio = prio;
@@ -69,7 +78,7 @@ void runLama(struct asn_t current_slot) {
 		if (linkERTable[j].primary & (1 << local_link_er_index))
 		{
 			// Compare the selected link with its primary conflict links
-			prio = computePriority(linkERTable[j].link_index, current_slot, INVALID_CHANNEL);
+			prio = linkPriority(linkERTable[j].link_index, current_slot, INVALID_CHANNEL);
 			if (prio > my_prio)
 			{
 				// when a primary conflict link is scheduled, this link is unschedulable
@@ -96,7 +105,7 @@ void runLama(struct asn_t current_slot) {
 			continue;
 		}
 
-		my_prio = computePriority(my_link_index, current_slot, i + RF231_CHANNEL_MIN);
+		my_prio = linkPriority(my_link_index, current_slot, i + RF231_CHANNEL_MIN);
 		for (uint8_t j = 0; j < link_er_size; ++j)
 		{
 			if (linkERTable[j].primary & (1 << local_link_er_index))
@@ -107,7 +116,7 @@ void runLama(struct asn_t current_slot) {
 			// Compare the selected link with its secondary conflict links
 			if (linkERTable[j].secondary & (1 << local_link_er_index))
 			{
-				prio = computePriority(linkERTable[j].link_index, current_slot, i + RF231_CHANNEL_MIN);
+				prio = linkPriority(linkERTable[j].link_index, current_slot, i + RF231_CHANNEL_MIN);
 				if (prio > my_prio)
 				{
 					channel_status[i] = UNAVAILABLE;
@@ -135,7 +144,7 @@ void runLama(struct asn_t current_slot) {
 		}
 		else
 		{
-			prio = computePriority(my_link_index, current_slot, i + RF231_CHANNEL_MIN);
+			prio = channelPriority(my_link_index, current_slot, i + RF231_CHANNEL_MIN);
 			if (prio > my_prio)
 			{
 				my_prio = prio;
