@@ -12,6 +12,23 @@ static void signalmap_slot_operation(struct rtimer *st, void *ptr);
 static void prkmcs_slot_operation(struct rtimer *st, void *ptr);
 static void synch_slot_operation(struct rtimer *st, void *ptr);
 
+void prkmcs_control_signaling()
+{
+	//SetChannel(control_channel);
+	printf("Control channel %u \r\n", control_channel);
+
+	wait_us(GetRand() % CCA_MAX_BACK_OFF_TIME);
+	uint8_t channel_idle = getCCA(RF231_CCA_2, 0);
+	if (channel_idle)
+	{
+		//ctimer_set(&send_timer, 1000, prkmcs_send_ctrl, NULL);
+		prkmcs_send_ctrl();
+	}
+	else
+	{
+		log_debug("Busy control channel");
+	}
+}
 /* schedule a wakeup at a specified offset from a reference time */
 static uint8_t prkmcs_schedule_slot_operation(struct rtimer *slot_timer, rtimer_clock_t ref_time, rtimer_clock_t offset)
 {
@@ -78,17 +95,18 @@ static void signalmap_slot_operation(struct rtimer *st, void *ptr)
 	start_rx();
 	schedule_next_slot(&slot_operation_timer);
 }
-static uint8_t is_ER_initialized = 0;
+//static uint8_t is_ER_initialized = 0;
 //Transceiving motes' slot operation
 static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 {		
 	// initialize local link er table
+ /*
 	if (!is_ER_initialized)
 	{
 		setLocalLinkERTable();
 		is_ER_initialized = 1;
 	}
-	
+*/	
 	if (prkmcs_is_synchronized)
 	{
 		printf("Slot %lu\r\n", current_asn.ls4b);
@@ -97,6 +115,7 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 			runLama(current_asn);
 			if (data_channel == INVALID_CHANNEL)
 			{
+   /*
 				SetChannel(control_channel);
 				printf("Control channel %u \r\n", control_channel);
 
@@ -111,6 +130,7 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 				{
 					log_debug("Busy control channel");
 				}
+	*/
 			}
 			else
 			{

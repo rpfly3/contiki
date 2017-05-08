@@ -14,7 +14,7 @@ uint8_t er_sending_index;
 
 /**************************** Link ER Table Management ************************/
 
-/* initialize link ER table at the very beginning */
+/* initialize link ER table with primary conflict links */
 void initLinkERTable() 
 {
 	link_er_size = 0;
@@ -39,6 +39,7 @@ void initLinkERTable()
 						linkERTable[link_er_size].receiver = activeLinks[j].receiver;
 						linkERTable[link_er_size].link_index = j;
 						linkERTable[link_er_size].primary = 0;
+						linkERTable[link_er_size].secondary = 0;
 						linkERTable[link_er_size].primary |= (1 << i);
 						linkERTable[link_er_size].er_version = 0;
 						linkERTable[link_er_size].I_edge = INVALID_DBM;
@@ -55,47 +56,59 @@ void initLinkERTable()
 			{
 				++link_er_size;	
 			}
+			else
+			{
+				// do nothing
+			}
 		}
 	}
+	return;
 }
 
 /* find the index to the entry of a link */
 uint8_t findLinkERTableIndex(uint8_t index) 
 {
+	uint8_t link_er_index = INVALID_INDEX;
+
 	for (uint8_t i = 0; i < link_er_size; i++) 
 	{
 		if (linkERTable[i].link_index == index) 
 		{
-			return i;
+			link_er_index = i;
+			break;
 		}
 	}
-	return INVALID_INDEX;
+	return link_er_index;
 }
 
-/* update the link er table according to received ER information */
+/* update the link er table according to received ER information 
+ * Note that these info are assumed to be valid. So caller should do validness checking.
+*/
 void updateLinkER(uint8_t link_index, uint16_t er_version, float I_edge)
 {
 	uint8_t link_er_index = findLinkERTableIndex(link_index); 
 	if (link_er_index == INVALID_INDEX)
 	{
-		if (link_er_size >= LINK_ER_TABLE_SIZE)
+		if (link_er_size < LINK_ER_TABLE_SIZE)
+		{
+			link_er_index = link_er_size;
+			++link_er_size;
+
+			linkERTable[link_er_index].sender = activeLinks[link_index].sender;
+			linkERTable[link_er_index].receiver = activeLinks[link_index].receiver;
+			linkERTable[link_er_index].link_index = link_index;
+			linkERTable[link_er_index].primary = 0;
+			linkERTable[link_er_index].secondary = 0;
+			linkERTable[link_er_index].er_version = er_version;
+			linkERTable[link_er_index].I_edge = I_edge;
+
+			// update conflict relation
+			updateConflictGraphForERChange(link_er_index);
+		}
+		else
 		{
 			log_error("link ER table is full.");
-			return;
 		}
-  
-		link_er_index = link_er_size;
-
-		linkERTable[link_er_index].sender = activeLinks[link_index].sender;
-		linkERTable[link_er_index].receiver = activeLinks[link_index].receiver;
-		linkERTable[link_er_index].link_index = link_index;
-		linkERTable[link_er_index].secondary = 0;
-		linkERTable[link_er_index].er_version = er_version;
-		linkERTable[link_er_index].I_edge = I_edge;
-
-		++link_er_size;
-
-		updateConflictGraphForERChange(link_er_index);
 	}
 	else
 	{
@@ -104,48 +117,113 @@ void updateLinkER(uint8_t link_index, uint16_t er_version, float I_edge)
 			linkERTable[link_er_index].er_version = er_version;
 			linkERTable[link_er_index].I_edge = I_edge;
 
+			// update conflict relation
 			updateConflictGraphForERChange(link_er_index);
 		}
+		else
+		{
+			// outdated info -- do nothing
+		}
 	}
+
+	return;
 }
 
 /*********************** Contention Table  Management **********************/
 
-uint8_t inER(float tx_power, float gain, float I_edge) 
+bool inER(float tx_power, float gain, float I_edge) 
 {
-    return (tx_power - gain >= I_edge);
+	bool in_er = ((tx_power - gain) >= I_edge);
+	return in_er;
 }
 
-uint8_t isConflicting(uint8_t link_er_index, uint8_t local_link_er_index) 
+bool isConflicting(uint8_t link_er_index, uint8_t local_link_er_index) 
 {
 	float inbound_gain, outbound_gain;
+	bool conflicted = false;
 
 	if (!localLinkERTable[local_link_er_index].is_sender)
 	{
+		// check if the link sender conflict with the receiver itself
 		inbound_gain = getInboundGain(linkERTable[link_er_index].sender);
-		if (inbound_gain == INVALID_GAIN)
+		if (!isEqual(inbound_gain, INVALID_GAIN))
 		{
-			return 0;
+			if (inER(tx_power, inbound_gain, localLinkERTable[local_link_er_index].I_edge))
+			{
+				conflicted = true;
+			}
+			else
+			{
+				// do nothing	
+			}
 		}
-		if (inER(tx_power, inbound_gain, localLinkERTable[local_link_er_index].I_edge))
+		else
 		{
-			return 1;
+			// do nothing	
 		}
+
+		
+		// check if the sender conflicts with the link receiver
+		outbound_gain = getNbOutboundGain(localLinkERTable[local_link_er_index].neighbor, linkERTable[link_er_index].receiver);
+		if (!isEqual(outbound_gain, INVALID_GAIN))
+		{
+			if (inER(tx_power, outbound_gain, linkERTable[link_er_index].I_edge))
+			{
+				conflicted = true;
+			}
+			else
+			{
+				// do nothing
+			}
+		}
+		else
+		{
+			// do nothing
+		}
+
 	}
 	else
 	{
+		// check if the sender itself conflict with the link receiver
 		outbound_gain = getOutboundGain(linkERTable[link_er_index].receiver); 
-		if (outbound_gain == INVALID_GAIN)
+		if (!isEqual(outbound_gain, INVALID_GAIN))
 		{
-			return 0;
+			if (inER(tx_power, outbound_gain, linkERTable[link_er_index].I_edge))
+			{
+				conflicted = true;
+			}
+			else
+			{
+				// do nothing
+			}
 		}
-		if (inER(tx_power, outbound_gain, linkERTable[link_er_index].I_edge))
+		else
 		{
-			return 1;	
+			// do nothing
 		}
+
+
+		// check if the link sender conflict with the receiver
+		inbound_gain = getNbInboundGain(linkERTable[link_er_index].sender, localLinkERTable[local_link_er_index].neighbor);
+		if (!isEqual(inbound_gain, INVALID_GAIN))
+		{
+			if (inER(tx_power, inbound_gain, localLinkERTable[local_link_er_index].I_edge))
+			{
+				conflicted = true;
+			}
+			else
+			{
+				// do nothing
+			}
+		}
+		else
+		{
+			// do nothing
+		}
+
 	}
 
-	return 0;
+	return conflicted;
 }
 
 /* update contention due to local link er change of link @index */
@@ -158,16 +236,21 @@ void updateConflictGraphForLocalERChange(uint8_t local_link_er_index)
 		{
 			continue;
 		}
-		// Only update secondary conflict relations
-		if (isConflicting(i, local_link_er_index))
-		{
-			linkERTable[i].secondary |= (1 << local_link_er_index);
-		}
 		else
 		{
-			linkERTable[i].secondary &= ~(1 << local_link_er_index);
+			// Only update secondary conflict relations
+			if (isConflicting(i, local_link_er_index))
+			{
+				linkERTable[i].secondary |= (1 << local_link_er_index);
+			}
+			else
+			{
+				linkERTable[i].secondary &= ~(1 << local_link_er_index);
+			}
 		}
 	}
+
+	return;
 }
 
 /* update contention due to link er change of node @index */
@@ -180,71 +263,91 @@ void updateConflictGraphForERChange(uint8_t link_er_index)
 		{
 			continue;
 		}
-		// Only update secondary conflict relations
-		if (isConflicting(link_er_index, i))
-		{
-			linkERTable[link_er_index].secondary |= (1 << i);
-		}
 		else
 		{
-			linkERTable[link_er_index].secondary &= ~(1 << i);
+			// Only update secondary conflict relations
+			if (isConflicting(link_er_index, i))
+			{
+				linkERTable[link_er_index].secondary |= (1 << i);
+			}
+			else
+			{
+				linkERTable[link_er_index].secondary &= ~(1 << i);
+			}
 		}
 	}
+
+	return;
 }
 
 /******************* interfaces to other modules ********************/
 
 static uint8_t is_sending_local_er = 1;
 
+/* prepare ER info for sending and invalid info can be detected by checking link_index == INVALID_INDEX */
 void prepareERSegment(uint8_t *ptr)
 {
 	// check if there is anything to send
 	if (local_link_er_size == 0)
 	{
-		return;
-	}
+		// prepare invalid info
+		uint8_t link_index = INVALID_INDEX;
+		uint16_t er_version = 0;
+		float I_edge = INVALID_DBM;
 
-	// alternatively send local er table and er table
-	if (is_sending_local_er == 1 || link_er_size == 0)
-	{
-		memcpy(ptr, &(localLinkERTable[local_er_sending_index].link_index), sizeof(uint8_t));
+		memcpy(ptr, &link_index, sizeof(uint8_t));
 		ptr += sizeof(uint8_t);
-		memcpy(ptr, &(localLinkERTable[local_er_sending_index].er_version), sizeof(uint16_t));
+		memcpy(ptr, &er_version, sizeof(uint16_t));
 		ptr += sizeof(uint16_t);
-		memcpy(ptr, &(localLinkERTable[local_er_sending_index].I_edge), sizeof(float));
+		memcpy(ptr, &I_edge, sizeof(float));
 		ptr += sizeof(float);
-
-		++local_er_sending_index;
-		// local er table is not empty, so tail check is good enough
-		if (local_er_sending_index >= local_link_er_size)
-		{
-			is_sending_local_er = 0;
-			local_er_sending_index = 0;
-			er_sending_index = 0;
-		}
-		else
-		{
-			is_sending_local_er = 1;
-		}
 	}
 	else
 	{
-		memcpy(ptr, &(linkERTable[er_sending_index].link_index), sizeof(uint8_t));
-		ptr += sizeof(uint8_t);
-		memcpy(ptr, &(linkERTable[er_sending_index].er_version), sizeof(uint16_t));
-		ptr += sizeof(uint16_t);
-		memcpy(ptr, &(linkERTable[er_sending_index].I_edge), sizeof(float));
-		ptr += sizeof(float);
-
-		++er_sending_index;
-		// tail check the valid index
-		if (er_sending_index >= link_er_size)
+		// alternatively send local er table and er table
+		if (is_sending_local_er == 1 || link_er_size == 0)
 		{
-			is_sending_local_er = 1;
-			er_sending_index = 0;
-			local_er_sending_index = 0;
+			memcpy(ptr, &(localLinkERTable[local_er_sending_index].link_index), sizeof(uint8_t));
+			ptr += sizeof(uint8_t);
+			memcpy(ptr, &(localLinkERTable[local_er_sending_index].er_version), sizeof(uint16_t));
+			ptr += sizeof(uint16_t);
+			memcpy(ptr, &(localLinkERTable[local_er_sending_index].I_edge), sizeof(float));
+			ptr += sizeof(float);
+
+			++local_er_sending_index;
+			// local er table is not empty, so tail check is good enough
+			if (local_er_sending_index >= local_link_er_size)
+			{
+				is_sending_local_er = 0;
+				local_er_sending_index = 0;
+				er_sending_index = 0;
+			}
+			else
+			{
+				is_sending_local_er = 1;
+			}
+		}
+		else
+		{
+			memcpy(ptr, &(linkERTable[er_sending_index].link_index), sizeof(uint8_t));
+			ptr += sizeof(uint8_t);
+			memcpy(ptr, &(linkERTable[er_sending_index].er_version), sizeof(uint16_t));
+			ptr += sizeof(uint16_t);
+			memcpy(ptr, &(linkERTable[er_sending_index].I_edge), sizeof(float));
+			ptr += sizeof(float);
+
+			++er_sending_index;
+			// tail check the valid index
+			if (er_sending_index >= link_er_size)
+			{
+				is_sending_local_er = 1;
+				er_sending_index = 0;
+				local_er_sending_index = 0;
+			}
 		}
 	}
+
+	return;
 }
 
 /* init protocol signaling module */

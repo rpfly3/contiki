@@ -35,7 +35,7 @@ typedef struct {
 
 void initController();
 // Called to initialize local ER after signal map is built
-void setLocalLinkERTable();
+void initLocalLinkER(uint8_t local_link_er_index);
 uint8_t findLocalLinkERTableIndex(uint8_t index);
 void er_receive(uint8_t *ptr);
 void updateER(uint8_t local_link_er_index, uint8_t pdr_index);

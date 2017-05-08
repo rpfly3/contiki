@@ -17,7 +17,9 @@ uint8_t rf231_rx_buffer_head, rf231_rx_buffer_tail;
 
 PROCESS(irq_clear_process, "IRQ clear process");
 PROCESS(rx_process, "Radio receive process");
+PROCESS(control_signaling_process, "Muiltichannel Control Signaling Process");
 process_event_t rx_packet_ready;
+process_event_t control_signaling;
 
 /*-------------------------------------------------------------------------------*/
 static void rf231_reset();
@@ -713,8 +715,8 @@ void EXTI1_IRQHandler(void)
 
 						rf231_rx_buffer[rf231_rx_buffer_tail].length = 0;
 						// Note that slot scheduling should be done after parameter settings
+						prkmcs_control_signaling();
 						schedule_next_slot(&slot_operation_timer);
-						//log_debug("Synch %u", time_synch_seq_no);
 					}
 					// Get ED after reception for other packets
 					else if (data_type == TEST_PACKET || data_type == CONTROL_PACKET || data_type == DATA_PACKET)
@@ -778,6 +780,17 @@ PROCESS_THREAD(rx_process, ev, data)
 
 			flush_rx_buffer();
 		}
+	}
+	PROCESS_END();
+}
+
+PROCESS_THREAD(control_signaling_process, ev, data)
+{
+	PROCESS_BEGIN();
+	while (1)
+	{
+		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+		//log_debug("Current slot start %lu, current time %lu", current_slot_start, RTIMER_NOW());
 	}
 	PROCESS_END();
 }

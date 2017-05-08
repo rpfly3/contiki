@@ -8,6 +8,7 @@
 
 PROCESS_NAME(irq_clear_process);
 PROCESS_NAME(rx_process);
+PROCESS_NAME(control_signaling_process);
 PROCESS_NAME(heart_beat_process);
 
 static uint16_t prkmcs_data_sequence_no[LOCAL_LINKS_SIZE];
@@ -28,6 +29,7 @@ void prkmcsInit(void)
 
 	process_start(&irq_clear_process, NULL);
 	process_start(&rx_process, NULL);
+	process_start(&control_signaling_process, NULL);
 	process_start(&heart_beat_process, NULL);
 
 	// Initialize data packet sequence number
