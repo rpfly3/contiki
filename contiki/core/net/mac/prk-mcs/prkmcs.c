@@ -72,13 +72,13 @@ void prkmcs_send_ctrl()
 	rf231_tx_buffer_size = FCF + CONTROL_PACKET_LENGTH + CHECKSUM_LEN;
 	//rf231_csma_send();
 	rf231_send();
-	log_debug("Control %u", prkmcs_control_packet_seq_no);
+	printf("Control %u\r\n", prkmcs_control_packet_seq_no);
 	++prkmcs_control_packet_seq_no;
 }
 
 void prkmcs_send_data() 
 {
-	SetPower(RF231_TX_PWR_MIN);
+	SetPower(RF231_TX_PWR_MAX);
 
 	uint8_t local_index = findLocalIndex(my_link_index);
 	prkmcs_data_packet_seq_no = prkmcs_data_sequence_no[local_index];
@@ -108,8 +108,9 @@ void prkmcs_send_data()
 		buf_ptr += SM_SEGMENT_LENGTH;
 	}
 	rf231_tx_buffer_size = FCF + DATA_PACKET_LENGTH + CHECKSUM_LEN;
-	rf231_csma_send();
-	log_debug("Data %u: for %u", prkmcs_data_packet_seq_no, pair_addr);
+	//rf231_csma_send();
+	rf231_send();
+	printf("Data %u: for %u\r\n", prkmcs_data_packet_seq_no, pair_addr);
 	++prkmcs_data_sequence_no[local_index];
 }
 
@@ -131,7 +132,7 @@ void prkmcs_receive()
 		}
 		else
 		{
-			return;
+			// do nothing
 		}
 	}
 	else if (data_type == CONTROL_PACKET && (rf231_rx_buffer[rf231_rx_buffer_head].length == FCF + CONTROL_PACKET_LENGTH))
@@ -144,7 +145,7 @@ void prkmcs_receive()
 
 		memcpy(&packet_seq_no, buf_ptr, sizeof(uint16_t));
 		buf_ptr += sizeof(uint16_t);
-		log_debug("Received Control %u: from %u", packet_seq_no, sender);
+		printf("Received Control %u: from %u\r\n", packet_seq_no, sender);
 
 		for (uint8_t i = 0; i < DATA_PACKET_ER_SEG_NUM; ++i)
 		{
@@ -157,13 +158,17 @@ void prkmcs_receive()
 			sm_receive(buf_ptr);
 			buf_ptr += SM_SEGMENT_LENGTH;
 		}
+
 		// Compute inbound gain only when EDs are valid
-		float inbound_gain;
 		if (rf231_rx_buffer[rf231_rx_buffer_head].tx_ed != INVALID_ED && rf231_rx_buffer[rf231_rx_buffer_head].noise_ed != INVALID_ED 
 			&& rf231_rx_buffer[rf231_rx_buffer_head].tx_ed > rf231_rx_buffer[rf231_rx_buffer_head].noise_ed)
 		{
-			inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed, rf231_rx_buffer[rf231_rx_buffer_head].noise_ed);
+			float inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed, rf231_rx_buffer[rf231_rx_buffer_head].noise_ed);
 			updateInboundGain(sender, inbound_gain);
+		}
+		else
+		{
+			// do nothing
 		}
 	}
 	else if (data_type == DATA_PACKET && (rf231_rx_buffer[rf231_rx_buffer_head].length == FCF + DATA_PACKET_LENGTH))
@@ -180,25 +185,28 @@ void prkmcs_receive()
 		memcpy(&packet_seq_no, buf_ptr, sizeof(uint16_t));
 		buf_ptr += sizeof(uint16_t);
 
-		if (receiver != node_addr)
+		if (receiver == node_addr)
 		{
-			//log_debug("Wrong link: %u to %u", sender, receiver);
-			return;
-		}
+			printf("Received Data %u: from %u\r\n", packet_seq_no, sender);
+			updateLinkQuality(sender, packet_seq_no);
 
-		log_debug("Received Data %u: from %u", packet_seq_no, sender);
-		updateLinkQuality(sender, packet_seq_no);
-
-		for (uint8_t i = 0; i < DATA_PACKET_ER_SEG_NUM; ++i)
-		{
-			er_receive(buf_ptr);
-			buf_ptr += ER_SEGMENT_LENGTH;
-		}
+			for (uint8_t i = 0; i < DATA_PACKET_ER_SEG_NUM; ++i)
+			{
+				er_receive(buf_ptr);
+				buf_ptr += ER_SEGMENT_LENGTH;
+			}
 		
-		for (uint8_t i = 0; i < DATA_PACKET_SM_SEG_NUM; ++i)
+			for (uint8_t i = 0; i < DATA_PACKET_SM_SEG_NUM; ++i)
+			{
+				sm_receive(buf_ptr);
+				buf_ptr += SM_SEGMENT_LENGTH;
+			}
+		}
+		else
 		{
-			sm_receive(buf_ptr);
-			buf_ptr += SM_SEGMENT_LENGTH;
+			// do nothing
 		}
 	}
+
+	return;
 }

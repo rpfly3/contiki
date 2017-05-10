@@ -132,7 +132,9 @@ static void updateOutboundGain(linkaddr_t receiver, float outbound_gain)
 	return;
 }
 
-/* add entries to local signal map to build the inital signal map */
+/* add entries to local signal map to build the inital signal map 
+ * Note that inbound_gain is assumed to be INVALID_GAIN.
+*/
 void updateInboundGain(linkaddr_t sender, float inbound_gain)
 {
 	if (isEqual(inbound_gain, INVALID_GAIN))
@@ -279,7 +281,6 @@ void updateNbSignalMap(uint8_t nbSM_index, linkaddr_t neighbor, linkaddr_t nb_ne
 /************** radio power translation **************/
 
 /* RF231 datasheet power: 3.0, 2.8, 2.3, 1.8, 1.3, 0.7, 0.0, -1, -2, -3, -4, -5, -7, -9, -12, -17 */
-/* scale 10 times to integer dBm */
 float powerLevelDBm[] = { 3.0, 2.8, 2.3, 1.8, 1.3, 0.7, 0.0, -1, -2, -3, -4, -5, -7, -9, -12, -17 };
 float powerLevel2dBm(uint8_t power_level) {
 	/* note that here the index of powre level is reversed */
@@ -347,10 +348,6 @@ float mW2dBm(double mW)
 float computeInboundGain(uint8_t tx_power_level, uint8_t tx_ed, uint8_t noise_ed) 
 {
 	float inbound_gain = powerLevel2dBm(tx_power_level) - mW2dBm(ed2mW(tx_ed) - ed2mW(noise_ed));
-	if (isEqual(inbound_gain, INVALID_GAIN))
-	{
-		log_debug("tx_power_level %u, tx_ed %u, noise_ed %u", tx_power_level, tx_ed, noise_ed);
-	}
 	return inbound_gain;
 }
 
@@ -368,7 +365,7 @@ float getInboundGain(linkaddr_t sender)
 	}	
 	return inbound_gain;
 }
-/* get the outbound gain of given sender */
+/* get the outbound gain to a given receiver */
 float getOutboundGain(linkaddr_t receiver)
 {
 	float outbound_gain = INVALID_GAIN;

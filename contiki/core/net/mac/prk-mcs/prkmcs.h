@@ -39,14 +39,14 @@ enum
 /* the unit is us because the rtimer graduality is us */
 enum
 {	
-	BUILD_SIGNALMAP_PERIOD = 1000,
+	BUILD_SIGNALMAP_PERIOD = 5000,
 	SLOT_GUARD = 2,
 	PRKMCS_TIMESLOT_LENGTH = 20000,
 };
 
 enum
 {
-	TIME_SYNCH_FREQUENCY      = 2,
+	TIME_SYNCH_FREQUENCY      = 3,
 	PRKMCS_MAX_PACKET_LENGTH  = 125,
 	PRKMCS_MIN_PACKET_LENGTH  = 3,
 
@@ -88,6 +88,8 @@ SM segment format
 /* active link info defined in topology module*/
 extern link_t activeLinks[];
 extern uint8_t activeLinksSize;
+extern linkaddr_t activeNodes[];
+extern uint8_t activeNodesSize;
 extern uint8_t localLinks[LOCAL_LINKS_SIZE];
 extern uint8_t localLinksSize;
 

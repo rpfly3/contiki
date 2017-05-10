@@ -74,35 +74,6 @@ uint8_t findLocalLinkERTableIndex(uint8_t index) {
     return local_link_er_index;
 }
 
-// initialize maximum local ER with existing signal map info
-void initLocalLinkER(uint8_t local_link_er_index)
-{
-	if (localLinkERTable[local_link_er_index].is_sender)
-	{
-		// do nothing
-	}
-	else
-	{
-		if (valid_sm_entry_size != 0)
-		{
-			uint8_t index = valid_sm_entry_size - 1;	
-
-			localLinkERTable[local_link_er_index].I_edge = powerLevel2dBm(DATA_POWER) - signalMap[index].inbound_gain;
-			++(localLinkERTable[local_link_er_index].er_version);
-			localLinkERTable[local_link_er_index].sm_index = index;
-
-			updateConflictGraphForLocalERChange(local_link_er_index);
-		}
-		else
-		{
-			log_error("No signal map info");
-		}
-	}
-
-	return;
-}
-
-
 /*************************** Controller ******************************/
 
 /* compute the delta I for link with @sender; note that this task is executed only by receiver */
@@ -134,66 +105,80 @@ void showSM()
 	printf("\r\n");
 }
 
-/* receiver update ER by computing \delta I */
-void updateER(uint8_t local_link_er_index, uint8_t pdr_index) 
+// initialize maximum local ER with existing signal map info
+void initLocalLinkER(uint8_t local_link_er_index)
 {
-	if (local_link_er_index == INVALID_INDEX)
+	if (valid_sm_entry_size != 0)
 	{
-		log_error("Cannot find given link in local link ER table.");
+		uint8_t index = valid_sm_entry_size - 1;	
+
+		localLinkERTable[local_link_er_index].I_edge = powerLevel2dBm(DATA_POWER) - signalMap[index].inbound_gain;
+		++(localLinkERTable[local_link_er_index].er_version);
+		localLinkERTable[local_link_er_index].sm_index = index;
+
+		updateConflictGraphForLocalERChange(local_link_er_index);
 	}
 	else
 	{
+		log_error("No signal map info");
+	}
 
-		if (localLinkERTable[local_link_er_index].sm_index == INVALID_INDEX)
+	return;
+}
+
+/* receiver update ER by computing \delta I */
+void updateER(uint8_t local_link_er_index, uint8_t pdr_index) 
+{
+	// check if ER is valid
+	if (isEqual(localLinkERTable[local_link_er_index].I_edge, INVALID_DBM))
+	{
+		initLocalLinkER(local_link_er_index);
+	}
+	else
+	{
+		uint8_t i = localLinkERTable[local_link_er_index].sm_index;
+		float current_I_edge = localLinkERTable[local_link_er_index].I_edge;
+		float deltaI_dB = pdr2DeltaIdB(pdr_index, local_link_er_index);
+
+		float next_I_edge = current_I_edge + deltaI_dB;
+
+		tx_power = powerLevel2dBm(DATA_POWER);
+
+		float total_I = 0;
+
+		if (deltaI_dB < 0)
 		{
-			initLocalLinkER(local_link_er_index);
+			while (i < valid_sm_entry_size - 1)
+			{
+				total_I += (tx_power - signalMap[i].inbound_gain);
+				if (total_I >= fabs(deltaI_dB))
+				{
+					break;
+				}
+				++i;
+			}
 		}
-		else
+		else if (deltaI_dB > 0)
 		{
-			uint8_t i = localLinkERTable[local_link_er_index].sm_index;
-
-			float deltaI_dB = pdr2DeltaIdB(pdr_index, local_link_er_index);
-
-			float current_I_edge = localLinkERTable[local_link_er_index].I_edge;
-			float next_I_edge = current_I_edge + deltaI_dB;
-
-			tx_power = powerLevel2dBm(DATA_POWER);
-
-			float total_I = 0;
-
-			if (deltaI_dB < 0)
+			while (i > 0)
 			{
-				while (i < valid_sm_entry_size - 1)
+				total_I += (tx_power - signalMap[i].inbound_gain);
+				if (total_I > fabs(deltaI_dB))
 				{
-					total_I += (tx_power - signalMap[i].inbound_gain);
-					if (total_I >= fabs(deltaI_dB))
-					{
-						break;
-					}
-					++i;
+					break;
 				}
+				--i;
 			}
-			else if (deltaI_dB > 0)
-			{
-				while (i > 0)
-				{
-					total_I += (tx_power - signalMap[i].inbound_gain);
-					if (total_I > fabs(deltaI_dB))
-					{
-						break;
-					}
-					--i;
-				}
-			}
+		}
 	
-			localLinkERTable[local_link_er_index].sm_index = i;
-			localLinkERTable[local_link_er_index].I_edge = tx_power - signalMap[i].inbound_gain;
-			++(localLinkERTable[local_link_er_index].er_version);
+		localLinkERTable[local_link_er_index].sm_index = i;
+		localLinkERTable[local_link_er_index].I_edge = tx_power - signalMap[i].inbound_gain;
+		++(localLinkERTable[local_link_er_index].er_version);
 
-			updateConflictGraphForLocalERChange(local_link_er_index);
-			printf("SM index %u, SM size %u, I_edge %f\r\n", i, valid_sm_entry_size, localLinkERTable[local_link_er_index].I_edge);
-			showSM();
-		}
+		updateConflictGraphForLocalERChange(local_link_er_index);
+		// There is a problem that some invalid sm (0.0000000000) is in sm table when signal map building period is short.
+		//printf("SM index %u, SM size %u, I_edge %f\r\n", i, valid_sm_entry_size, localLinkERTable[local_link_er_index].I_edge);
+		//showSM();
 	}
 
 	return;

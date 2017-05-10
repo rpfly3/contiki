@@ -191,4 +191,7 @@ uint8_t getCCA(uint8_t CCA, uint8_t threshold);
 uint8_t GetRand();
 void rf231_set_interrupt(uint8_t interrupt);
 
+void InitED();
+uint8_t GetED();
+
 #endif

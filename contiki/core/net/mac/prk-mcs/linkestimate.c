@@ -27,34 +27,39 @@ void linkestimateInit() {
 			} while (1);
 		}
 
-		if (activeLinks[localLinks[i]].receiver != node_addr)
+		if (activeLinks[localLinks[i]].receiver == node_addr)
+		{
+
+			// Initialize PDR table entry
+			pdrTable[pdr_table_size].sender = activeLinks[localLinks[i]].sender;
+			pdrTable[pdr_table_size].sequence_num = 0;
+			pdrTable[pdr_table_size].next_update_sequence = PDR_COMPUTE_WINDOW_SIZE;
+			pdrTable[pdr_table_size].received_pkt = 0;
+			pdrTable[pdr_table_size].sent_pkt = 0;
+			pdrTable[pdr_table_size].pdr = INVALID_PDR;
+			pdrTable[pdr_table_size].pdr_sample = INVALID_PDR;
+			++pdr_table_size;
+		}
+		else
 		{
 			continue;
 		}
-
-		// Initialize PDR table entry
-		pdrTable[pdr_table_size].sender = activeLinks[localLinks[i]].sender;
-		pdrTable[pdr_table_size].sequence_num = 0;
-		pdrTable[pdr_table_size].next_update_sequence = PDR_COMPUTE_WINDOW_SIZE;
-		pdrTable[pdr_table_size].received_pkt = 0;
-		pdrTable[pdr_table_size].sent_pkt = 0;
-		pdrTable[pdr_table_size].pdr = INVALID_PDR;
-		pdrTable[pdr_table_size].pdr_sample = INVALID_PDR;
-		++pdr_table_size;
 	}
 }
 
 /* find the index to the entry for neighbor */
 uint8_t findPDRTableIndex(linkaddr_t sender) 
 {
+	uint8_t pdr_index = INVALID_INDEX;
     for(uint8_t i = 0; i < pdr_table_size; i++) 
     {
 	    if (pdrTable[i].sender == sender) 
 	    {
-		    return i;
+		    pdr_index = i;
+		    break;
         }
     }
-    return INVALID_INDEX;
+    return pdr_index;
 }
 
 /************************ Link Quality Updating *************************/
@@ -73,7 +78,7 @@ void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num)
 	    {
 	    	// update pdr info
 		    pdrTable[pdr_index].pdr_sample = pdrTable[pdr_index].received_pkt * 100 / pdrTable[pdr_index].sent_pkt;
-		    pdrTable[pdr_index].pdr = pdrTable[pdr_index].pdr != INVALID_PDR ? (ALPHA * pdrTable[pdr_index].pdr + (1 - ALPHA) * pdrTable[pdr_index].pdr_sample) : pdrTable[pdr_index].pdr_sample;
+		    pdrTable[pdr_index].pdr = (pdrTable[pdr_index].pdr != INVALID_PDR) ? (ALPHA * pdrTable[pdr_index].pdr + (1 - ALPHA) * pdrTable[pdr_index].pdr_sample) : pdrTable[pdr_index].pdr_sample;
 
 		    pdrTable[pdr_index].sent_pkt = 0;
 		    pdrTable[pdr_index].received_pkt = 0;
@@ -81,19 +86,33 @@ void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num)
 
 
 		    // find the local_link_er_index and update corresponding local er table entry
-			for (uint8_t i = 0; i < local_link_er_size; ++i)
-			{
-				if (localLinkERTable[i].neighbor == pdrTable[pdr_index].sender && !localLinkERTable[i].is_sender)
-				{
-					printf("Link %u PDR %d\r\n", localLinkERTable[i].link_index, pdrTable[pdr_index].pdr);
-					updateER(i, pdr_index);
-					return;
-				}
-			}
-		}
+		    for (uint8_t i = 0; i < local_link_er_size; ++i)
+		    {
+			    if ((localLinkERTable[i].neighbor == sender) && (!localLinkERTable[i].is_sender))
+			    {
+				    if (localLinkERTable[i].link_index == 3)
+				    {
+					    log_debug("PDR sample %u: sent %u, received %u", pdrTable[pdr_index].pdr_sample, pdrTable[pdr_index].sent_pkt, pdrTable[pdr_index].received_pkt);
+				    }
+				    printf("Link %u PDR %u\r\n", localLinkERTable[i].link_index, pdrTable[pdr_index].pdr);
+				    updateER(i, pdr_index);
+				    break;
+			    }
+			    else
+			    {
+				    continue;
+			    }
+		    }
+	    }
+	    else
+	    {
+		    // do nothing
+	    }
 	} 
 	else 
 	{
 		log_error("Cannot find the PDR table index.");
     }
+	
+	return;
 }

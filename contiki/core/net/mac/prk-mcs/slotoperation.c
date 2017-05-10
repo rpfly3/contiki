@@ -12,31 +12,14 @@ static void signalmap_slot_operation(struct rtimer *st, void *ptr);
 static void prkmcs_slot_operation(struct rtimer *st, void *ptr);
 static void synch_slot_operation(struct rtimer *st, void *ptr);
 
-void prkmcs_control_signaling()
-{
-	//SetChannel(control_channel);
-	printf("Control channel %u \r\n", control_channel);
-
-	wait_us(GetRand() % CCA_MAX_BACK_OFF_TIME);
-	uint8_t channel_idle = getCCA(RF231_CCA_2, 0);
-	if (channel_idle)
-	{
-		//ctimer_set(&send_timer, 1000, prkmcs_send_ctrl, NULL);
-		prkmcs_send_ctrl();
-	}
-	else
-	{
-		log_debug("Busy control channel");
-	}
-}
 /* schedule a wakeup at a specified offset from a reference time */
 static uint8_t prkmcs_schedule_slot_operation(struct rtimer *slot_timer, rtimer_clock_t ref_time, rtimer_clock_t offset)
 {
 	rtimer_clock_t now = RTIMER_NOW();
 
-	if (ref_time + offset - SLOT_GUARD <= now)
+	if (ref_time + offset <= now)
 	{
-		log_info("Miss slot %ld", current_asn.ls4b);
+		log_info("Miss slot %lu", current_asn.ls4b);
 		return 0;
 	}
 
@@ -87,69 +70,65 @@ void prkmcs_slot_operation_start()
 //Building Signalmap
 static void signalmap_slot_operation(struct rtimer *st, void *ptr)
 {
-	//printf("Slot %lu.\r\n", current_asn.ls4b);
 	SetChannel(control_channel);
-	wait_us(GetRand() % CCA_MAX_BACK_OFF_TIME);
+	wait_us(rand() % CCA_MAX_BACK_OFF_TIME);
 	test_send();
 
 	start_rx();
 	schedule_next_slot(&slot_operation_timer);
 }
-//static uint8_t is_ER_initialized = 0;
+
+void prkmcs_control_signaling(uint8_t node_index)
+{
+	if (node_addr == activeNodes[node_index])
+	{
+		ctimer_set(&send_timer, 200, prkmcs_send_ctrl, NULL);
+	}
+	else
+	{
+		start_rx();
+	}
+
+}
+
 //Transceiving motes' slot operation
 static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 {		
-	// initialize local link er table
- /*
-	if (!is_ER_initialized)
-	{
-		setLocalLinkERTable();
-		is_ER_initialized = 1;
-	}
-*/	
 	if (prkmcs_is_synchronized)
 	{
 		printf("Slot %lu\r\n", current_asn.ls4b);
-		if (current_asn.ls4b % TIME_SYNCH_FREQUENCY != 0)
+		uint8_t duty_cicle = current_asn.ls4b % TIME_SYNCH_FREQUENCY;
+		if (duty_cicle == 0)
+		{
+			SetChannel(control_channel);
+			start_rx();
+		}
+		else if (duty_cicle == 1)
+		{
+			SetChannel(control_channel);
+			uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;
+			prkmcs_control_signaling(node_index);
+		}
+		else if (duty_cicle == 2)
 		{
 			runLama(current_asn);
-			if (data_channel == INVALID_CHANNEL)
-			{
-   /*
-				SetChannel(control_channel);
-				printf("Control channel %u \r\n", control_channel);
-
-				wait_us(GetRand() % CCA_MAX_BACK_OFF_TIME);
-				uint8_t channel_idle = getCCA(RF231_CCA_2, 0);
-				if (channel_idle)
-				{
-					//ctimer_set(&send_timer, 1000, prkmcs_send_ctrl, NULL);
-					prkmcs_send_ctrl();
-				}
-				else
-				{
-					log_debug("Busy control channel");
-				}
-	*/
-			}
-			else
+			if (data_channel != INVALID_CHANNEL)
 			{
 				SetChannel(data_channel);
 				if (!is_receiver)
 				{
-					ctimer_set(&send_timer, 1000, prkmcs_send_data, NULL);
+					ctimer_set(&send_timer, 200, prkmcs_send_data, NULL);
 				}
 				else
 				{
 					start_rx();
 				}
-				printf("Link index %u channel %u \r\n", my_link_index, data_channel);
+				log_debug("Link index %u channel %u", my_link_index, data_channel);
 			}
-		}
-		else
-		{
-			SetChannel(control_channel);
-			start_rx();
+			else
+			{
+				log_debug("Not scheduled by LAMA");
+			}
 		}
 	}
 	else
@@ -157,16 +136,16 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 		SetChannel(control_channel);
 		start_rx();	
 	}
-
-	start_rx();
 	schedule_next_slot(&slot_operation_timer);
 }
 
-// Time synch mote's slot operation
+// base station mote's slot operation
 static void synch_slot_operation(struct rtimer* st, void* ptr)
 {
 	printf("Slot %lu\r\n", current_asn.ls4b);
+ 	// base station only stay in control channel
 	SetChannel(control_channel);
+
 	if (building_signalmap)
 	{
 		if (current_asn.ls4b == BUILD_SIGNALMAP_PERIOD)
@@ -178,12 +157,28 @@ static void synch_slot_operation(struct rtimer* st, void* ptr)
 					
 			time_synch_send();
 		}
+		else
+		{
+			// do nothing
+		}
 	}
 	else
 	{
-		if (!prkmcs_is_synchronized || current_asn.ls4b % TIME_SYNCH_FREQUENCY == 0)
+		if (!prkmcs_is_synchronized)
 		{
-			ctimer_set(&send_timer, 500, time_synch_send, NULL);
+			ctimer_set(&send_timer, 200, time_synch_send, NULL);
+		}
+		else
+		{
+			uint8_t duty_cicle = current_asn.ls4b % TIME_SYNCH_FREQUENCY;	
+			if (duty_cicle == 0)
+			{
+				ctimer_set(&send_timer, 200, time_synch_send, NULL);
+			}
+			else
+			{
+				// do nothing
+			}
 		}
 	}
 	schedule_next_slot(&slot_operation_timer);

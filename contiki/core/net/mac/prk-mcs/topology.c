@@ -18,7 +18,8 @@ link_t activeLinks[] = {{1, 2}, {2, 1}, {3, 5}, {4, 7}, {5, 3}, {6, 7}, {8, 9}, 
 
 link_t activeLinks[] = { {70, 85}, {70, 84}, {84, 85}, {83, 84}, {85, 100}, {85, 99}, {99, 84}, {83, 84}, {83, 98}, {98, 97}, {83, 97}, {82, 97}, {81, 96},
 {96, 122}, {96, 81}, {82, 81}, {124, 122}, {124, 98}, {122, 125}, {128, 129}, {129, 127}, {126, 123}};
-
+linkaddr_t activeNodes[] = { 70, 81, 82, 83, 84, 85, 96, 97, 98, 99, 100, 122, 123, 124, 125, 126, 127, 128, 129 };
+uint8_t activeNodesSize = sizeof(activeNodes) / sizeof(activeNodes[0]);
 uint8_t activeLinksSize = sizeof(activeLinks) / sizeof(activeLinks[0]);
 
 /* local active links table storing the index (in activeLinks table) of links adjoint at this node */

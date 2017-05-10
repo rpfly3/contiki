@@ -39,5 +39,5 @@ enum {
 /*---------- External Variables ---------*/
 void prkmcs_slot_operation_start();
 void schedule_next_slot(struct rtimer *t);
-void prkmcs_control_signaling();
+void prkmcs_control_signaling(uint8_t node_index);
 #endif /* __SLOT_OPERATION_H__ */

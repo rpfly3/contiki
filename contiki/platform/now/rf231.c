@@ -81,9 +81,33 @@ static void rf231_rx_on(void)
 
 	do
 	{
-		log_info("Waiting for enter RX_ON status");
 		status = RF231_GetStatus();
 	} while (status != RF231_TRX_STATUS__RX_ON);
+}
+
+// put it in TRX_OFF status from active states
+void put_trx_off()
+{
+	uint8_t new_status, original_status = RF231_GetStatus();
+	if (original_status == RF231_TRX_STATUS__TRX_OFF)
+	{
+		return;
+	}
+	else if (original_status != RF231_TRX_STATUS__RX_ON && 
+		original_status != RF231_TRX_STATUS__BUSY_RX)
+	{
+		log_error("Wrong status %u", original_status);
+		return;
+	}
+
+	RF231_SLP_TRClr();
+	RF231_StateCtrl(RF231_TRX_STATE__FORCE_TRX_OFF);
+	delay_us(tTR12); 
+	
+	do
+	{
+		new_status = RF231_GetStatus();
+	} while (new_status != RF231_TRX_STATUS__TRX_OFF);
 }
 
 // Transit state from PLL_ON to RX_ON and be ready for reception
@@ -580,6 +604,7 @@ void rf231_receive()
 /* Perform a CCA to find out if there is a packet in the air or not*/
 uint8_t getCCA(uint8_t CCA, uint8_t threshold) 
 {
+	put_trx_off();
 	uint8_t cca = 0;
 
 	// Keep radio in RX_ON state avoid BUSY_RX
@@ -587,7 +612,8 @@ uint8_t getCCA(uint8_t CCA, uint8_t threshold)
 	WriteRegister(RF231_PHY_RX_SYN, 0x80 | val);
 
     /* CCA should be done in RX_ON status */
-	start_rx();
+	//start_rx();
+	rf231_rx_on();
 
 	SetEDThreshold(threshold);
 	SetCCAMode(CCA);
@@ -633,11 +659,6 @@ void rf231_csma_send()
 	RF231_SLP_TRClr();
 }
 
-
-static volatile uint8_t interrupt_status, radio_status;
-static rtimer_clock_t reception_time, network_time;
-static uint16_t time_synch_seq_no;
-process_event_t packet_in_buffer;
 void EXTI1_IRQHandler(void)
 {			
 	if (EXTI_GetITStatus(EXTI_Line1) != RESET) 
@@ -645,108 +666,16 @@ void EXTI1_IRQHandler(void)
 		EXTI_ClearITPendingBit(EXTI_Line1);
 		if (node_addr == BASE_STATION_ID)
 		{
-			return;
+			// do nothing
 		}
-
-		// simultaneous access radio would lead to packet loss and wrong radio status
-		if (RF231_GetSEL() == 0)
+		else
 		{
 			process_poll(&irq_clear_process);
-			return;
-		}
-
-		interrupt_status = ReadRegister(RF231_IRQ_STATUS);
-  
-		// Check if the receiver buffer is full 
-		if (rf231_rx_buffer_head == (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS)
-		{
-			log_error("Radio reception buffer is full");
-			return;
-		}
-
-		if (interrupt_status & RF231_RX_START_MASK)
-		{
-			delay_us(tReadED);
-			rf231_rx_buffer[rf231_rx_buffer_tail].tx_ed = GetED();
-		}
-		if (interrupt_status & RF231_TRX_END_MASK)
-		{
-			radio_status = RF231_GetStatus();	
-			if (radio_status == RF231_TRX_STATUS__RX_ON)
-			{
-				if (is_crc_valid())
-				{
-					ReadFrame(&rf231_rx_buffer[rf231_rx_buffer_tail]);	
-
-					// If the packet length is not correct, then discard it
-					// Note: currently RF231_MAX_FRAME_LENGTH is set to 127, but data length should be less than 125, because we use automatically FCS
-					if (rf231_rx_buffer[rf231_rx_buffer_tail].length > RF231_MAX_FRAME_LENGTH - 2 || rf231_rx_buffer[rf231_rx_buffer_tail].length < RF231_MIN_FRAME_LENGTH) 
-					{
-						rf231_rx_buffer[rf231_rx_buffer_tail].length = 0;
-						return;
-					} 
-
-					uint8_t *buf_ptr = rf231_rx_buffer[rf231_rx_buffer_tail].data;
-					uint8_t data_type;
-
-					buf_ptr += FCF;
-					memcpy(&data_type, buf_ptr, sizeof(uint8_t));
-					buf_ptr += sizeof(uint8_t);
-
-					// Handle TIME_SYNCH_BEACON immediately
-					if (data_type == TIME_SYNCH_BEACON && rf231_rx_buffer[rf231_rx_buffer_tail].length == TIME_SYNCH_BEACON_LENGTH + 1)
-					{
-						memcpy(&network_time, buf_ptr, sizeof(rtimer_clock_t));
-						buf_ptr += sizeof(rtimer_clock_t);
-						memcpy(&time_synch_seq_no, buf_ptr, sizeof(uint16_t));
-						buf_ptr += sizeof(uint16_t);
-
-						network_time_set(network_time);
-						current_slot_start = network_time - (network_time % PRKMCS_TIMESLOT_LENGTH);
-						ASN_INIT(current_asn, 0, network_time / PRKMCS_TIMESLOT_LENGTH);
-
-						building_signalmap = 0;
-
-						// Consecutively processing five packets to make sure motes are synchronized
-						if (time_synch_seq_no >= 5)
-						{
-							prkmcs_is_synchronized = 1;
-						}
-
-						rf231_rx_buffer[rf231_rx_buffer_tail].length = 0;
-						// Note that slot scheduling should be done after parameter settings
-						prkmcs_control_signaling();
-						schedule_next_slot(&slot_operation_timer);
-					}
-					// Get ED after reception for other packets
-					else if (data_type == TEST_PACKET || data_type == CONTROL_PACKET || data_type == DATA_PACKET)
-					{
-						InitED();
-					}
-				}
-			}
-			else if (radio_status == RF231_TRX_STATUS__PLL_ON || radio_status == RF231_TRX_STATUS__TX_ARET_ON)
-			{
-				start_rx();
-			}
-		}
-		if (interrupt_status & RF231_CCA_ED_DONE_MASK)
-		{
-			// Distinguish ED done or CCA done
-			if (ED_Init == 0)
-			{
-				return;
-			}
-			else
-			{
-				rf231_rx_buffer[rf231_rx_buffer_tail].noise_ed = GetED();
-				rf231_rx_buffer_tail = (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS;
-				ED_Init = 0;
-				process_post(&rx_process, packet_in_buffer, NULL);
-			}
 		}
 	}
 }
+
+process_event_t packet_in_buffer;
 
 PROCESS_THREAD(irq_clear_process, ev, data)
 {
@@ -754,8 +683,112 @@ PROCESS_THREAD(irq_clear_process, ev, data)
 	while (1)
 	{
 		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+		uint8_t interrupt_status = ReadRegister(RF231_IRQ_STATUS);
+  
+		// Check if the receiver buffer is full 
+		if (rf231_rx_buffer_head == (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS)
+		{
+			log_error("Radio reception buffer is full");
+		}
+		else
+		{
+			if (interrupt_status & RF231_RX_START_MASK)
+			{
+				delay_us(tReadED);
+				rf231_rx_buffer[rf231_rx_buffer_tail].tx_ed = GetED();
+			}
+			else if (interrupt_status & RF231_TRX_END_MASK)
+			{
+				uint8_t radio_status = RF231_GetStatus();	
+				if (radio_status == RF231_TRX_STATUS__RX_ON)
+				{
+					if (is_crc_valid())
+					{
+						ReadFrame(&rf231_rx_buffer[rf231_rx_buffer_tail]);	
 
-		ReadRegister(RF231_IRQ_STATUS);
+						// If the packet length is not correct, then discard it
+						// Note: currently RF231_MAX_FRAME_LENGTH is set to 127, but data length should be less than 125, because we use automatically FCS
+						if (rf231_rx_buffer[rf231_rx_buffer_tail].length <= RF231_MAX_FRAME_LENGTH - 2 && rf231_rx_buffer[rf231_rx_buffer_tail].length >= RF231_MIN_FRAME_LENGTH) 
+						{
+	  
+							uint8_t *buf_ptr = rf231_rx_buffer[rf231_rx_buffer_tail].data;
+							uint8_t data_type;
+
+							buf_ptr += FCF;
+							memcpy(&data_type, buf_ptr, sizeof(uint8_t));
+							buf_ptr += sizeof(uint8_t);
+
+							// Handle TIME_SYNCH_BEACON immediately
+							if (data_type == TIME_SYNCH_BEACON && rf231_rx_buffer[rf231_rx_buffer_tail].length == TIME_SYNCH_BEACON_LENGTH + 1)
+							{
+								rtimer_clock_t network_time;
+								memcpy(&network_time, buf_ptr, sizeof(rtimer_clock_t));
+								buf_ptr += sizeof(rtimer_clock_t);
+								uint16_t time_synch_seq_no;
+								memcpy(&time_synch_seq_no, buf_ptr, sizeof(uint16_t));
+								buf_ptr += sizeof(uint16_t);
+								
+								// synchronize time and reschedule
+								network_time_set(network_time);
+								current_slot_start = network_time - (network_time % PRKMCS_TIMESLOT_LENGTH);
+								ASN_INIT(current_asn, 0, network_time / PRKMCS_TIMESLOT_LENGTH);
+
+								building_signalmap = 0;
+
+								// Consecutively processing five packets to make sure motes are synchronized
+								if (time_synch_seq_no >= 5)
+								{
+									prkmcs_is_synchronized = 1;
+								}
+
+								printf("Received TS: %u\r\n", time_synch_seq_no);
+
+								schedule_next_slot(&slot_operation_timer);
+							}
+							else if (data_type == TEST_PACKET || data_type == CONTROL_PACKET || data_type == DATA_PACKET)
+							{
+								InitED();
+							}
+						} 
+						else
+						{
+							// invalid packet -- do nothing
+						}
+					}
+					else
+					{
+						// invalid packet -- do nothing
+					}
+				}
+				else if (radio_status == RF231_TRX_STATUS__PLL_ON || radio_status == RF231_TRX_STATUS__TX_ARET_ON)
+				{
+					start_rx();
+				}
+				else
+				{
+					// do nothing
+				}
+			}
+			else if (interrupt_status & RF231_CCA_ED_DONE_MASK)
+			{
+				// Distinguish ED done or CCA done
+				if (ED_Init == 0)
+				{
+					// do nothing
+				}
+				else
+				{
+					rf231_rx_buffer[rf231_rx_buffer_tail].noise_ed = GetED();
+					rf231_rx_buffer_tail = (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS;
+					ED_Init = 0;
+					process_post(&rx_process, packet_in_buffer, NULL);
+				}
+			}
+			else
+			{
+				// do nothing
+			}
+		}
 	}
 	PROCESS_END();
 }

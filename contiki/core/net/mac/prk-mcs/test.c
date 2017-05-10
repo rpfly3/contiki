@@ -23,7 +23,8 @@ void test_send()
 
 	rf231_tx_buffer_size = FCF + TEST_PACKET_LENGTH + CHECKSUM_LEN;
 
-	rf231_csma_send();
+	//rf231_csma_send();
+	rf231_send();
 	++test_seq_no;
 }
 
@@ -38,11 +39,14 @@ void test_receive(uint8_t *ptr)
 	ptr += sizeof(uint16_t);
 
 	// Compute inbound gain only when EDs are valid
-	float inbound_gain;
 	if (rf231_rx_buffer[rf231_rx_buffer_head].tx_ed != INVALID_ED && rf231_rx_buffer[rf231_rx_buffer_head].noise_ed != INVALID_ED 
 		&& rf231_rx_buffer[rf231_rx_buffer_head].tx_ed > rf231_rx_buffer[rf231_rx_buffer_head].noise_ed)
 	{
-		inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed, rf231_rx_buffer[rf231_rx_buffer_head].noise_ed);
+		float inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed, rf231_rx_buffer[rf231_rx_buffer_head].noise_ed);
 		updateInboundGain(sender, inbound_gain);
+	}
+	else
+	{
+		// do nothing
 	}
 }
