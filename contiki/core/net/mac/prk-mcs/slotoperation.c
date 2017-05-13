@@ -4,7 +4,6 @@ static struct ctimer send_timer;
 
 struct asn_t current_asn; //absolute slot number
 volatile rtimer_clock_t current_slot_start;
-uint8_t building_signalmap = 1;
 uint8_t is_receiver, my_link_index, prkmcs_is_synchronized;
 uint8_t control_channel, data_channel;
 
@@ -25,16 +24,8 @@ static uint8_t prkmcs_schedule_slot_operation(struct rtimer *slot_timer, rtimer_
 
 	if (node_addr != BASE_STATION_ID)
 	{
-		if (building_signalmap && current_asn.ls4b <= BUILD_SIGNALMAP_PERIOD)
-		{
-			//schedule slot operation for building signal map
-			rtimer_set(slot_timer, current_slot_start, 0, (void(*)(struct rtimer*, void *))signalmap_slot_operation, NULL);
-		}
-		else
-		{
-			//schedule slot operation for transceiving motes
-			rtimer_set(slot_timer, current_slot_start, 0, (void(*)(struct rtimer*, void *))prkmcs_slot_operation, NULL);
-		}
+		//schedule slot operation for transceiving motes
+		rtimer_set(slot_timer, current_slot_start, 0, (void(*)(struct rtimer*, void *))prkmcs_slot_operation, NULL);
 	}
 	else
 	{
@@ -67,22 +58,24 @@ void prkmcs_slot_operation_start()
 	network_time_set(0);
 	schedule_next_slot(&slot_operation_timer);
 }
-//Building Signalmap
-static void signalmap_slot_operation(struct rtimer *st, void *ptr)
-{
-	SetChannel(control_channel);
-	wait_us(rand() % CCA_MAX_BACK_OFF_TIME);
-	test_send();
 
-	start_rx();
-	schedule_next_slot(&slot_operation_timer);
+static void signalmap_signaling(uint8_t node_index)
+{
+	if (node_addr == activeNodes[node_index])
+	{
+		ctimer_set(&send_timer, 500, test_send, NULL);
+	}
+	else
+	{
+		start_rx();
+	}
 }
 
 void prkmcs_control_signaling(uint8_t node_index)
 {
 	if (node_addr == activeNodes[node_index])
 	{
-		ctimer_set(&send_timer, 200, prkmcs_send_ctrl, NULL);
+		ctimer_set(&send_timer, 500, prkmcs_send_ctrl, NULL);
 	}
 	else
 	{
@@ -98,44 +91,80 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 	{
 		printf("Slot %lu\r\n", current_asn.ls4b);
 		uint8_t duty_cicle = current_asn.ls4b % TIME_SYNCH_FREQUENCY;
-		if (duty_cicle == 0)
+
+		if (current_asn.ls4b <= BUILD_SIGNALMAP_PERIOD)
 		{
 			SetChannel(control_channel);
-			start_rx();
-		}
-		else if (duty_cicle == 1)
-		{
-			SetChannel(control_channel);
-			uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;
-			prkmcs_control_signaling(node_index);
-		}
-		else if (duty_cicle == 2)
-		{
-			runLama(current_asn);
-			if (data_channel != INVALID_CHANNEL)
+			if (duty_cicle == 0)
 			{
-				SetChannel(data_channel);
-				if (!is_receiver)
+				start_rx();
+			}
+			else if (duty_cicle == 1)
+			{
+				uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;				
+				signalmap_signaling(node_index);
+			}
+			else if (duty_cicle == 2)
+			{
+				uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;				
+				signalmap_signaling(node_index);	
+			}
+			else if (duty_cicle == 3)
+			{
+				uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;				
+				signalmap_signaling(node_index);
+			}
+		
+		}
+		else
+		{
+
+			if (duty_cicle == 0)
+			{
+				SetChannel(control_channel);
+				start_rx();
+			}
+			else if (duty_cicle == 1)
+			{
+				SetChannel(control_channel);
+				uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;
+				prkmcs_control_signaling(node_index);
+			}
+			else if (duty_cicle == 2)
+			{
+				SetChannel(control_channel);
+				uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;
+				prkmcs_control_signaling(node_index);	
+			}
+			else if (duty_cicle == 3)
+			{
+				runLama(current_asn);
+				if (data_channel != INVALID_CHANNEL)
 				{
-					ctimer_set(&send_timer, 200, prkmcs_send_data, NULL);
+					SetChannel(data_channel);
+					if (!is_receiver)
+					{
+						ctimer_set(&send_timer, 500, prkmcs_send_data, NULL);
+					}
+					else
+					{
+						start_rx();
+					}
+					log_debug("Link index %u channel %u", my_link_index, data_channel);
 				}
 				else
 				{
-					start_rx();
+					log_debug("Not scheduled by LAMA");
 				}
-				log_debug("Link index %u channel %u", my_link_index, data_channel);
-			}
-			else
-			{
-				log_debug("Not scheduled by LAMA");
 			}
 		}
 	}
 	else
 	{
 		SetChannel(control_channel);
-		start_rx();	
+		start_rx();
 	}
+
 	schedule_next_slot(&slot_operation_timer);
 }
 
@@ -145,40 +174,20 @@ static void synch_slot_operation(struct rtimer* st, void* ptr)
 	printf("Slot %lu\r\n", current_asn.ls4b);
  	// base station only stay in control channel
 	SetChannel(control_channel);
-
-	if (building_signalmap)
+	if (!prkmcs_is_synchronized)
 	{
-		if (current_asn.ls4b == BUILD_SIGNALMAP_PERIOD)
+		ctimer_set(&send_timer, 500, time_synch_send, NULL);
+	}
+	else
+	{
+		uint8_t duty_cicle = current_asn.ls4b % TIME_SYNCH_FREQUENCY;	
+		if (duty_cicle == 0)
 		{
-			building_signalmap = 0;
-			current_slot_start = 0;
-			ASN_INIT(current_asn, 0, 0);
-			network_time_set(0);
-					
-			time_synch_send();
+			ctimer_set(&send_timer, 500, time_synch_send, NULL);
 		}
 		else
 		{
 			// do nothing
-		}
-	}
-	else
-	{
-		if (!prkmcs_is_synchronized)
-		{
-			ctimer_set(&send_timer, 200, time_synch_send, NULL);
-		}
-		else
-		{
-			uint8_t duty_cicle = current_asn.ls4b % TIME_SYNCH_FREQUENCY;	
-			if (duty_cicle == 0)
-			{
-				ctimer_set(&send_timer, 200, time_synch_send, NULL);
-			}
-			else
-			{
-				// do nothing
-			}
 		}
 	}
 	schedule_next_slot(&slot_operation_timer);

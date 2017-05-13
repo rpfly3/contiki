@@ -6,7 +6,7 @@
 
 #define ALPHA 0.8
 enum {
-	PDR_TABLE_SIZE = 10,
+	PDR_TABLE_SIZE = 40,
     INVALID_PDR = 0xff,
     /* number of packets to wait before computing a new DLQ (Data-driver Link Quality */
     PDR_COMPUTE_WINDOW_SIZE = 20,

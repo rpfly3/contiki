@@ -39,14 +39,14 @@ enum
 /* the unit is us because the rtimer graduality is us */
 enum
 {	
-	BUILD_SIGNALMAP_PERIOD = 5000,
+	BUILD_SIGNALMAP_PERIOD = 10000,
 	SLOT_GUARD = 2,
 	PRKMCS_TIMESLOT_LENGTH = 20000,
 };
 
 enum
 {
-	TIME_SYNCH_FREQUENCY      = 3,
+	TIME_SYNCH_FREQUENCY      = 4,
 	PRKMCS_MAX_PACKET_LENGTH  = 125,
 	PRKMCS_MIN_PACKET_LENGTH  = 3,
 
@@ -56,15 +56,9 @@ enum
 	INVALID_ED				  = 0xFF,
 
 	ER_SEGMENT_LENGTH         = 7,
-	SM_SEGMENT_LENGTH         = 10,
-	
-	CONTROL_PACKET_ER_SEG_NUM = 11,
-	CONTROL_PACKET_SM_SEG_NUM = 4,
-	DATA_PACKET_ER_SEG_NUM    = 11,
-	DATA_PACKET_SM_SEG_NUM    = 4,
+	SM_SEGMENT_LENGTH         = 9,
 
-	CONTROL_PACKET_LENGTH     = 121,
-	DATA_PACKET_LENGTH        = 122,
+	MAX_ER_SEG_NUM = 17,
 
 	CCA_MAX_BACK_OFF_TIME     = 1000,
 	CCA_ED_THRESHOLD          = 10,
@@ -73,16 +67,16 @@ enum
 /*
 Packet format
 -----------------------------------------------------------------
-| Type | Receiver | Sender | Seq No | ER Segments | SM Segments |
--1 byte---1 byte----1 byte---2 byte------------------------------
+| Type | Receiver | Sender | Seq No | # of ER Seg | ER Segments |
+-1 byte---1 byte----1 byte---2 byte------1 byte -----------------
 ER segment format
 ------------------------------------
 | Link Index | ER Version | I Edge |
 ----1 byte-------2 byte-----4 byte--
 SM segment format
 ---------------------------------------------------
-| Neighbor | Local | Inbound Gain | Outbound Gain |
----1 byte----1 byte-----4 bytes---------4 bytes----
+| Neighbor | Inbound Gain | Outbound Gain |
+---1 byte-----4 bytes---------4 bytes-----
 */
 
 /* active link info defined in topology module*/
@@ -102,7 +96,6 @@ extern struct rtimer slot_operation_timer;
 /* scheduling info */
 extern linkaddr_t node_addr, pair_addr;
 extern uint8_t is_receiver, my_link_index, prkmcs_is_synchronized;
-extern uint8_t building_signalmap;
 
 /* channel selection info defined in onama module */
 extern uint8_t data_channel, control_channel;
@@ -117,6 +110,7 @@ extern uint8_t channel_status[CHANNEL_NUM]; // record the channel state for sche
 /* link er table */
 extern link_er_t linkERTable[LINK_ER_TABLE_SIZE];
 extern uint8_t link_er_size;
+extern uint8_t er_sending_index;
 
 /* local link er info defined in controller module */
 extern local_link_er_t localLinkERTable[LOCAL_LINK_ER_TABLE_SIZE];
@@ -126,7 +120,9 @@ extern uint8_t local_er_sending_index;
 /* signal map info defined in signal map module */
 extern sm_entry_t signalMap[SIGNAL_MAP_SIZE];
 extern uint8_t valid_sm_entry_size;
+extern uint8_t sm_sending_index;
 extern nb_sm_t nbSignalMap[NB_SM_SIZE];
+extern uint8_t valid_nb_sm_entry_size;
 
 /* pdr info defined in linkestimate module*/
 extern pdr_t pdrTable[PDR_TABLE_SIZE];

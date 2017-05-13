@@ -17,7 +17,6 @@ uint8_t rf231_rx_buffer_head, rf231_rx_buffer_tail;
 
 PROCESS(irq_clear_process, "IRQ clear process");
 PROCESS(rx_process, "Radio receive process");
-PROCESS(control_signaling_process, "Muiltichannel Control Signaling Process");
 process_event_t rx_packet_ready;
 process_event_t control_signaling;
 
@@ -670,6 +669,7 @@ void EXTI1_IRQHandler(void)
 		}
 		else
 		{
+
 			process_poll(&irq_clear_process);
 		}
 	}
@@ -683,8 +683,10 @@ PROCESS_THREAD(irq_clear_process, ev, data)
 	while (1)
 	{
 		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+
+		uint8_t ED = GetED();
 		uint8_t interrupt_status = ReadRegister(RF231_IRQ_STATUS);
-  
+
 		// Check if the receiver buffer is full 
 		if (rf231_rx_buffer_head == (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS)
 		{
@@ -694,8 +696,7 @@ PROCESS_THREAD(irq_clear_process, ev, data)
 		{
 			if (interrupt_status & RF231_RX_START_MASK)
 			{
-				delay_us(tReadED);
-				rf231_rx_buffer[rf231_rx_buffer_tail].tx_ed = GetED();
+				rf231_rx_buffer[rf231_rx_buffer_tail].tx_ed = ED;
 			}
 			else if (interrupt_status & RF231_TRX_END_MASK)
 			{
@@ -707,7 +708,6 @@ PROCESS_THREAD(irq_clear_process, ev, data)
 						ReadFrame(&rf231_rx_buffer[rf231_rx_buffer_tail]);	
 
 						// If the packet length is not correct, then discard it
-						// Note: currently RF231_MAX_FRAME_LENGTH is set to 127, but data length should be less than 125, because we use automatically FCS
 						if (rf231_rx_buffer[rf231_rx_buffer_tail].length <= RF231_MAX_FRAME_LENGTH - 2 && rf231_rx_buffer[rf231_rx_buffer_tail].length >= RF231_MIN_FRAME_LENGTH) 
 						{
 	  
@@ -728,12 +728,11 @@ PROCESS_THREAD(irq_clear_process, ev, data)
 								memcpy(&time_synch_seq_no, buf_ptr, sizeof(uint16_t));
 								buf_ptr += sizeof(uint16_t);
 								
+								rtimer_clock_t adjust_time = RTIMER_NOW();
 								// synchronize time and reschedule
 								network_time_set(network_time);
 								current_slot_start = network_time - (network_time % PRKMCS_TIMESLOT_LENGTH);
 								ASN_INIT(current_asn, 0, network_time / PRKMCS_TIMESLOT_LENGTH);
-
-								building_signalmap = 0;
 
 								// Consecutively processing five packets to make sure motes are synchronized
 								if (time_synch_seq_no >= 5)
@@ -741,13 +740,15 @@ PROCESS_THREAD(irq_clear_process, ev, data)
 									prkmcs_is_synchronized = 1;
 								}
 
-								printf("Received TS: %u\r\n", time_synch_seq_no);
+								printf("Received TS: %u at time %lu\r\n", time_synch_seq_no, adjust_time);
 
 								schedule_next_slot(&slot_operation_timer);
 							}
 							else if (data_type == TEST_PACKET || data_type == CONTROL_PACKET || data_type == DATA_PACKET)
 							{
-								InitED();
+								rf231_rx_buffer[rf231_rx_buffer_tail].noise_ed = 0;
+								rf231_rx_buffer_tail = (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS;
+								process_post(&rx_process, packet_in_buffer, NULL);
 							}
 						} 
 						else
@@ -771,18 +772,7 @@ PROCESS_THREAD(irq_clear_process, ev, data)
 			}
 			else if (interrupt_status & RF231_CCA_ED_DONE_MASK)
 			{
-				// Distinguish ED done or CCA done
-				if (ED_Init == 0)
-				{
-					// do nothing
-				}
-				else
-				{
-					rf231_rx_buffer[rf231_rx_buffer_tail].noise_ed = GetED();
-					rf231_rx_buffer_tail = (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS;
-					ED_Init = 0;
-					process_post(&rx_process, packet_in_buffer, NULL);
-				}
+				// do nothing
 			}
 			else
 			{
@@ -813,17 +803,6 @@ PROCESS_THREAD(rx_process, ev, data)
 
 			flush_rx_buffer();
 		}
-	}
-	PROCESS_END();
-}
-
-PROCESS_THREAD(control_signaling_process, ev, data)
-{
-	PROCESS_BEGIN();
-	while (1)
-	{
-		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
-		//log_debug("Current slot start %lu, current time %lu", current_slot_start, RTIMER_NOW());
 	}
 	PROCESS_END();
 }

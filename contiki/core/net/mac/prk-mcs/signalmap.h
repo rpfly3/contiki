@@ -6,9 +6,9 @@
 
 #define FLT_EPSILON 0.01
 enum {
-	SIGNAL_MAP_SIZE = 127,
-	NB_SIGNAL_MAP_SIZE = 45,
-	NB_SM_SIZE = 127,
+	SIGNAL_MAP_SIZE = 75,
+	NB_SIGNAL_MAP_SIZE = 75,
+	NB_SM_SIZE = 75,
 	INVALID_GAIN = 0,
 };
 
@@ -56,6 +56,6 @@ float getNbInboundGain(linkaddr_t sender, linkaddr_t receiver);
 float getNbOutboundGain(linkaddr_t sender, linkaddr_t receiver);
 float computeInboundGain(uint8_t tx_power_level, uint8_t tx_ed, uint8_t noise_ed);
 void prepareSMSegment(uint8_t *ptr);
-void sm_receive(uint8_t *ptr);
+void sm_receive(uint8_t *ptr, linkaddr_t sender);
 
 #endif /* __SIGNALMAP_H__ */

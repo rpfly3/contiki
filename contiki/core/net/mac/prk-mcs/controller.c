@@ -204,8 +204,31 @@ void initController()
 	initLocalLinkERTable();
 }
 
+/* prepare local ER info for sending */
+bool prepareLocalERSegment(uint8_t *ptr)
+{
+	bool prepared = false;
+	if (!isEqual(localLinkERTable[local_er_sending_index].I_edge, INVALID_DBM))
+	{
+		memcpy(ptr, &(localLinkERTable[local_er_sending_index].link_index), sizeof(uint8_t));
+		ptr += sizeof(uint8_t);
+		memcpy(ptr, &(localLinkERTable[local_er_sending_index].er_version), sizeof(uint16_t));
+		ptr += sizeof(uint16_t);
+		memcpy(ptr, &(localLinkERTable[local_er_sending_index].I_edge), sizeof(float));
+		ptr += sizeof(float);
 
-void er_receive(uint8_t *ptr)
+		prepared = true;
+	}
+	else
+	{
+		// do nothing
+	}
+	++local_er_sending_index;
+	return prepared;
+}
+
+
+void er_receive(uint8_t *ptr, linkaddr_t sender)
 {
 	uint8_t link_index;
 	memcpy(&link_index, ptr, sizeof(uint8_t));

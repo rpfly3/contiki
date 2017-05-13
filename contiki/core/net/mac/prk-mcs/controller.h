@@ -8,8 +8,8 @@ enum
 {
 	PDR_REQUIREMENT = 90,
 	E_0 = 4,
-	LOCAL_LINK_ER_TABLE_SIZE = 10,
-	LINK_ER_TABLE_SIZE = 50,
+	LOCAL_LINK_ER_TABLE_SIZE = 40,
+	LINK_ER_TABLE_SIZE = 150,
 	INVALID_DBM = 0xff,
 	INVALID_ER_VERSION = 0xffff,
 };
@@ -37,6 +37,7 @@ void initController();
 // Called to initialize local ER after signal map is built
 void initLocalLinkER(uint8_t local_link_er_index);
 uint8_t findLocalLinkERTableIndex(uint8_t index);
-void er_receive(uint8_t *ptr);
+bool prepareLocalERSegment(uint8_t *ptr);
+void er_receive(uint8_t *ptr, linkaddr_t sender);
 void updateER(uint8_t local_link_er_index, uint8_t pdr_index);
 #endif /* __CONTROLLER_H__ */

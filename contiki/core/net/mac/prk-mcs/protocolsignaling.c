@@ -282,52 +282,14 @@ void updateConflictGraphForERChange(uint8_t link_er_index)
 
 /******************* interfaces to other modules ********************/
 
-static uint8_t is_sending_local_er = 1;
 
 /* prepare ER info for sending and invalid info can be detected by checking link_index == INVALID_INDEX */
-void prepareERSegment(uint8_t *ptr)
+bool prepareERSegment(uint8_t *ptr)
 {
-	// check if there is anything to send
-	if (local_link_er_size == 0)
+	bool prepared = false;
+	if (!isEqual(linkERTable[er_sending_index].I_edge, INVALID_DBM))
 	{
-		// prepare invalid info
-		uint8_t link_index = INVALID_INDEX;
-		uint16_t er_version = 0;
-		float I_edge = INVALID_DBM;
-
-		memcpy(ptr, &link_index, sizeof(uint8_t));
-		ptr += sizeof(uint8_t);
-		memcpy(ptr, &er_version, sizeof(uint16_t));
-		ptr += sizeof(uint16_t);
-		memcpy(ptr, &I_edge, sizeof(float));
-		ptr += sizeof(float);
-	}
-	else
-	{
-		// alternatively send local er table and er table
-		if (is_sending_local_er == 1 || link_er_size == 0)
-		{
-			memcpy(ptr, &(localLinkERTable[local_er_sending_index].link_index), sizeof(uint8_t));
-			ptr += sizeof(uint8_t);
-			memcpy(ptr, &(localLinkERTable[local_er_sending_index].er_version), sizeof(uint16_t));
-			ptr += sizeof(uint16_t);
-			memcpy(ptr, &(localLinkERTable[local_er_sending_index].I_edge), sizeof(float));
-			ptr += sizeof(float);
-
-			++local_er_sending_index;
-			// local er table is not empty, so tail check is good enough
-			if (local_er_sending_index >= local_link_er_size)
-			{
-				is_sending_local_er = 0;
-				local_er_sending_index = 0;
-				er_sending_index = 0;
-			}
-			else
-			{
-				is_sending_local_er = 1;
-			}
-		}
-		else
+		if (linkERTable[er_sending_index].secondary || linkERTable[er_sending_index].primary)
 		{
 			memcpy(ptr, &(linkERTable[er_sending_index].link_index), sizeof(uint8_t));
 			ptr += sizeof(uint8_t);
@@ -336,18 +298,20 @@ void prepareERSegment(uint8_t *ptr)
 			memcpy(ptr, &(linkERTable[er_sending_index].I_edge), sizeof(float));
 			ptr += sizeof(float);
 
-			++er_sending_index;
-			// tail check the valid index
-			if (er_sending_index >= link_er_size)
-			{
-				is_sending_local_er = 1;
-				er_sending_index = 0;
-				local_er_sending_index = 0;
-			}
+			prepared = true;		
 		}
-	}
+		else
+		{
+			// do nothing
+		}
 
-	return;
+	}	
+	else
+	{
+		// do nothing
+	}
+	++er_sending_index;
+	return prepared;
 }
 
 /* init protocol signaling module */
@@ -355,7 +319,6 @@ void protocolSignalingInit()
 {
 	er_sending_index = 0;
 	local_er_sending_index = 0;
-	is_sending_local_er = 1;
 
 	initLinkERTable();
 }

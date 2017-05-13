@@ -11,16 +11,11 @@
 /* signal map: used for adjust ER */
 sm_entry_t signalMap[SIGNAL_MAP_SIZE];
 uint8_t valid_sm_entry_size;
-static uint8_t sm_sending_index;
+uint8_t sm_sending_index;
 
 /* neighbors' signal maps: used for get conflicting relations */
 nb_sm_t nbSignalMap[NB_SM_SIZE];
-static uint8_t valid_nb_sm_entry_size;
-static uint8_t nb_sm_sending_index;
-static uint8_t nb_sm_entry_sending_index;
-
-PROCESS(signalmap_process, "Signalmap process");
-process_event_t	signalmap_ready;
+uint8_t valid_nb_sm_entry_size;
 
 bool isEqual(float x, float y)
 {
@@ -95,7 +90,6 @@ static void sortSignalMap(uint8_t index)
 		}
 		signalMap[i] = tmp;
 	}
-	//process_post(&signalmap_process, signalmap_ready, NULL);
 }
 
 
@@ -123,6 +117,7 @@ static void updateOutboundGain(linkaddr_t receiver, float outbound_gain)
 			signal = &signalMap[index];
 			signal->neighbor = receiver;
 			signal->outbound_gain = outbound_gain;
+			signal->inbound_gain = INVALID_GAIN;
 		}
 		else
 		{
@@ -149,7 +144,14 @@ void updateInboundGain(linkaddr_t sender, float inbound_gain)
 		if (index != INVALID_INDEX) 
 		{
 			signal = &signalMap[index];
-			signal->inbound_gain = signal->inbound_gain * ALPHA + inbound_gain * (1 - ALPHA);
+			if (!isEqual(signal->inbound_gain, INVALID_GAIN))
+			{
+				signal->inbound_gain = signal->inbound_gain * ALPHA + inbound_gain * (1 - ALPHA);
+			}
+			else
+			{
+				signal->inbound_gain = inbound_gain;
+			}
    
 			// Resort the signal map
 			sortSignalMap(index);
@@ -164,6 +166,7 @@ void updateInboundGain(linkaddr_t sender, float inbound_gain)
 
 				signal->neighbor = sender;
 				signal->inbound_gain = inbound_gain;
+				signal->outbound_gain = INVALID_GAIN;
 	
 				// Resort the signal map
 				sortSignalMap(index);
@@ -274,7 +277,6 @@ void updateNbSignalMap(uint8_t nbSM_index, linkaddr_t neighbor, linkaddr_t nb_ne
 			}
 		}
 	}
-	//process_post(&signalmap_process, signalmap_ready, NULL);
 }
 
 
@@ -472,144 +474,59 @@ float getNbOutboundGain(linkaddr_t sender, linkaddr_t receiver)
 	return outbound_gain;
 }
 
-static uint8_t is_sending_local_sm = 1;
-/* prepare sm info for sending
- * Invalid info can be detected by checking neighbor == INVALID_ADDR || local == INVALID_ADDR
- */
+/* prepare sm info for sending */
 void prepareSMSegment(uint8_t *ptr)
 {
-	// check if there is anything to send 
-	if (valid_sm_entry_size == 0)
-	{
-		// fill invalid info for detection
-		linkaddr_t neighbor = INVALID_ADDR, local = INVALID_ADDR;
-		float inbound_gain = INVALID_GAIN, outbound_gain = INVALID_GAIN;
-		memcpy(ptr, &neighbor, sizeof(linkaddr_t));
-		ptr += sizeof(linkaddr_t);
-		memcpy(ptr, &local, sizeof(linkaddr_t));
-		ptr += sizeof(linkaddr_t);
-		memcpy(ptr, &inbound_gain, sizeof(float));
-		ptr += sizeof(float);
-		memcpy(ptr, &outbound_gain, sizeof(float));
-		ptr += sizeof(float);
-	}
-	else
-	{
-			// alternatively send local signal map and neighbor signal map
-		if (is_sending_local_sm == 1 || valid_nb_sm_entry_size == 0)
-		{
-			memcpy(ptr, &(signalMap[sm_sending_index].neighbor), sizeof(linkaddr_t));
-			ptr += sizeof(linkaddr_t);
-			memcpy(ptr, &(node_addr), sizeof(linkaddr_t));
-			ptr += sizeof(linkaddr_t);
-			memcpy(ptr, &(signalMap[sm_sending_index].inbound_gain), sizeof(float));
-			ptr += sizeof(float);
-			memcpy(ptr, &(signalMap[sm_sending_index].outbound_gain), sizeof(float));
-			ptr += sizeof(float);	
+	memcpy(ptr, &(signalMap[sm_sending_index].neighbor), sizeof(linkaddr_t));
+	ptr += sizeof(linkaddr_t);
+	memcpy(ptr, &(signalMap[sm_sending_index].inbound_gain), sizeof(float));
+	ptr += sizeof(float);
+	memcpy(ptr, &(signalMap[sm_sending_index].outbound_gain), sizeof(float));
+	ptr += sizeof(float);	
 
-			++sm_sending_index;
-			// local signal map is not empty, so tail check is good enough
-			if (sm_sending_index >= valid_sm_entry_size)
-			{
-				sm_sending_index = 0;
-				is_sending_local_sm = 0;
-				nb_sm_sending_index = 0;
-				nb_sm_entry_sending_index = 0;
-			}
-			else
-			{
-				is_sending_local_sm = 1;
-			}
-		}
-		else
-		{
-			// neighbor signal map is not empty, so tail check is good enough
-			memcpy(ptr, &(nbSignalMap[nb_sm_sending_index].nb_sm[nb_sm_entry_sending_index].neighbor), sizeof(linkaddr_t));
-			ptr += sizeof(linkaddr_t);
-			memcpy(ptr, &(nbSignalMap[nb_sm_sending_index].neighbor), sizeof(linkaddr_t));
-			ptr += sizeof(linkaddr_t);
-			memcpy(ptr, &(nbSignalMap[nb_sm_sending_index].nb_sm[nb_sm_entry_sending_index].inbound_gain), sizeof(float));
-			ptr += sizeof(float);
-			memcpy(ptr, &(nbSignalMap[nb_sm_sending_index].nb_sm[nb_sm_entry_sending_index].outbound_gain), sizeof(float));
-			ptr += sizeof(float);
-
-			++nb_sm_entry_sending_index;
-			// traverse the neighbor entry and find a not sent one
-			while (nb_sm_entry_sending_index >= nbSignalMap[nb_sm_sending_index].entry_num)
-			{
-				// check the first entry of a new neighbor
-				nb_sm_entry_sending_index = 0;
-				++nb_sm_sending_index;
-
-							// tail check the valid index
-				if (nb_sm_sending_index >= valid_nb_sm_entry_size)
-				{
-					nb_sm_sending_index = 0;
-					is_sending_local_sm = 1;
-					sm_sending_index = 0;
-					return;
-				}
-			}
-		}
-	}
-
+	++sm_sending_index;
 	return;
 }
 
-void sm_receive(uint8_t *ptr)
+void sm_receive(uint8_t *ptr, linkaddr_t sender)
 {
-	linkaddr_t neighbor, local;
+	linkaddr_t neighbor;
 	memcpy(&neighbor, ptr, sizeof(linkaddr_t));
 	ptr += sizeof(linkaddr_t);
-	memcpy(&local, ptr, sizeof(linkaddr_t));
-	ptr += sizeof(linkaddr_t);	
-	
 	float inbound_gain, outbound_gain;
 	memcpy(&inbound_gain, ptr, sizeof(float));
 	ptr += sizeof(float);
 	memcpy(&outbound_gain, ptr, sizeof(float));
 	ptr += sizeof(float);
 
-	if (neighbor == INVALID_ADDR || local == INVALID_ADDR || (isEqual(inbound_gain, INVALID_GAIN) && isEqual(outbound_gain, INVALID_GAIN)))
+	//log_debug("sm: %u to %u", neighbor, local);
+	if (neighbor != node_addr)
 	{
-		// invalid info -- do nothing
-	}
-	else
-	{
-		//log_debug("sm: %u to %u", neighbor, local);
-		if (local != node_addr && neighbor != node_addr)
-		{
-			//Add to neighbor signal map
-			uint8_t nbSM_index = findNbSignalMapIndex(local);
+		//Add to neighbor signal map
+		uint8_t nbSM_index = findNbSignalMapIndex(sender);
 
-			if (nbSM_index != INVALID_INDEX)
-			{
-				updateNbSignalMap(nbSM_index, local, neighbor, inbound_gain, outbound_gain);
-			}
-			else
-			{
-				nbSM_index = findNbSignalMapIndex(neighbor);
-				updateNbSignalMap(nbSM_index, neighbor, local, outbound_gain, inbound_gain);	
-			}
-		}
-		else if (neighbor == node_addr)
+		if (nbSM_index != INVALID_INDEX)
 		{
-			// If related to node_addr, add to local signal map
-			if (!isEqual(inbound_gain, INVALID_GAIN))
-			{
-				updateOutboundGain(local, inbound_gain);
-			}
-			else
-			{
-				// do nothing
-			}
+			updateNbSignalMap(nbSM_index, sender, neighbor, inbound_gain, outbound_gain);
 		}
 		else
 		{
-			// info back to origin -- do nothing
+			nbSM_index = findNbSignalMapIndex(neighbor);
+			updateNbSignalMap(nbSM_index, neighbor, sender, outbound_gain, inbound_gain);	
 		}
 	}
-
+	else
+	{
+		// If related to node_addr, add to local signal map
+		if (!isEqual(inbound_gain, INVALID_GAIN))
+		{
+			updateOutboundGain(sender, inbound_gain);
+		}
+		else
+		{
+			// do nothing
+		}
+	}
 	return;
 }
 
@@ -618,20 +535,4 @@ void signalMapInit()
 	valid_sm_entry_size = 0;
 	sm_sending_index = 0;
 	valid_nb_sm_entry_size = 0;
-	nb_sm_sending_index = 0;
-	nb_sm_entry_sending_index = 0;
-	is_sending_local_sm = 1;
-
-	//process_start(&signalmap_process, NULL);
-}
-
-/* Process for signal map debug */
-PROCESS_THREAD(signalmap_process, ev, data)
-{
-	PROCESS_BEGIN();
-	while (1) 
-	{
-		PROCESS_WAIT_EVENT_UNTIL(ev == signalmap_ready);
-	}
-	PROCESS_END();
 }

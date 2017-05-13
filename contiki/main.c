@@ -18,6 +18,7 @@ static void platform_init()
 	node_addr = getNodeId();
 	log_info("Mote %d is booted", node_addr);
 }
+																												                                                                                                                                                                                                            //70
 int main()
 {
 	platform_init();
@@ -34,7 +35,6 @@ int main()
 #ifdef PRKMCS_ENABLE
 	prkmcsInit();
 #endif // PRKMCS_ENABLE
-
 	while (1)
 	{
 		process_run();

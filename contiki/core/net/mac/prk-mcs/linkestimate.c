@@ -68,45 +68,49 @@ void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num)
     uint8_t pdr_index = findPDRTableIndex(sender);
     if(pdr_index != INVALID_INDEX) 
     {
-	 	// update stastics
-	    pdrTable[pdr_index].sent_pkt += (sequence_num - pdrTable[pdr_index].sequence_num);
-	    pdrTable[pdr_index].received_pkt += 1;
-	    pdrTable[pdr_index].sequence_num = sequence_num;
-
-	    // check if it's time to update PDR
-	    if (sequence_num >= pdrTable[pdr_index].next_update_sequence)
+	    if (sequence_num > pdrTable[pdr_index].sequence_num)
 	    {
-	    	// update pdr info
-		    pdrTable[pdr_index].pdr_sample = pdrTable[pdr_index].received_pkt * 100 / pdrTable[pdr_index].sent_pkt;
-		    pdrTable[pdr_index].pdr = (pdrTable[pdr_index].pdr != INVALID_PDR) ? (ALPHA * pdrTable[pdr_index].pdr + (1 - ALPHA) * pdrTable[pdr_index].pdr_sample) : pdrTable[pdr_index].pdr_sample;
+		    // update stastics
+		    pdrTable[pdr_index].sent_pkt += (sequence_num - pdrTable[pdr_index].sequence_num);
+		    pdrTable[pdr_index].received_pkt += 1;
+		    pdrTable[pdr_index].sequence_num = sequence_num;
 
-		    pdrTable[pdr_index].sent_pkt = 0;
-		    pdrTable[pdr_index].received_pkt = 0;
-		    pdrTable[pdr_index].next_update_sequence = sequence_num + PDR_COMPUTE_WINDOW_SIZE;
-
-
-		    // find the local_link_er_index and update corresponding local er table entry
-		    for (uint8_t i = 0; i < local_link_er_size; ++i)
+		    	    // check if it's time to update PDR
+		    if (sequence_num >= pdrTable[pdr_index].next_update_sequence)
 		    {
-			    if ((localLinkERTable[i].neighbor == sender) && (!localLinkERTable[i].is_sender))
+		    	// update pdr info
+			    pdrTable[pdr_index].pdr_sample = pdrTable[pdr_index].received_pkt * 100 / pdrTable[pdr_index].sent_pkt;
+			    pdrTable[pdr_index].pdr = (pdrTable[pdr_index].pdr != INVALID_PDR) ? (ALPHA * pdrTable[pdr_index].pdr + (1 - ALPHA) * pdrTable[pdr_index].pdr_sample) : pdrTable[pdr_index].pdr_sample;
+
+
+
+
+			    		    // find the local_link_er_index and update corresponding local er table entry
+			    for (uint8_t i = 0; i < local_link_er_size; ++i)
 			    {
-				    if (localLinkERTable[i].link_index == 3)
+				    if ((localLinkERTable[i].neighbor == sender) && (!localLinkERTable[i].is_sender))
 				    {
-					    log_debug("PDR sample %u: sent %u, received %u", pdrTable[pdr_index].pdr_sample, pdrTable[pdr_index].sent_pkt, pdrTable[pdr_index].received_pkt);
+					    printf("Link %u PDR %u\r\n", localLinkERTable[i].link_index, pdrTable[pdr_index].pdr);
+					    updateER(i, pdr_index);
+					    break;
 				    }
-				    printf("Link %u PDR %u\r\n", localLinkERTable[i].link_index, pdrTable[pdr_index].pdr);
-				    updateER(i, pdr_index);
-				    break;
+				    else
+				    {
+					    continue;
+				    }
 			    }
-			    else
-			    {
-				    continue;
-			    }
+			    pdrTable[pdr_index].sent_pkt = 0;
+			    pdrTable[pdr_index].received_pkt = 0;
+			    pdrTable[pdr_index].next_update_sequence = sequence_num + PDR_COMPUTE_WINDOW_SIZE;
+		    }
+		    else
+		    {
+				// do nothing
 		    }
 	    }
 	    else
 	    {
-		    // do nothing
+		    log_error("Packet with smaller sequence number");
 	    }
 	} 
 	else 

@@ -107,7 +107,7 @@ void exti_pe1_config(void) {
 	/* PE1 uses EXTI1_IRQChannel vector */
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;
 	/* Set highest priority */
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);

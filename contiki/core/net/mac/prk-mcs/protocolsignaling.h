@@ -22,7 +22,7 @@ typedef struct {
 void protocolSignalingInit();
 uint8_t findLinkERTableIndex(uint8_t index);
 uint8_t findEmptyLinkERTableIndex();
-void prepareERSegment(uint8_t *ptr);
+bool prepareERSegment(uint8_t *ptr);
 void updateLinkER(uint8_t link_index, uint16_t er_version, float I_edge);
 void updateConflictGraphForERChange(uint8_t link_er_index);
 void updateConflictGraphForLocalERChange(uint8_t local_link_er_index);

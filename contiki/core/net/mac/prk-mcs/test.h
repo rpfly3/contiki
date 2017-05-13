@@ -4,7 +4,7 @@
 #include "contiki.h"
 #include "core/net/linkaddr.h"
 
-#define TEST_PACKET_LENGTH (sizeof(uint8_t) + sizeof(linkaddr_t) + sizeof(uint16_t))
+#define MAX_SM_NUM 13
 void test_init();
 void test_send();
 void test_receive(uint8_t *ptr);
