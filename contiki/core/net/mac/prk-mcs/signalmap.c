@@ -118,6 +118,9 @@ static void updateOutboundGain(linkaddr_t receiver, float outbound_gain)
 			signal->neighbor = receiver;
 			signal->outbound_gain = outbound_gain;
 			signal->inbound_gain = INVALID_GAIN;
+
+   			// Resort the signal map
+			sortSignalMap(index);
 		}
 		else
 		{
@@ -300,22 +303,6 @@ float powerLevel2dBm(uint8_t power_level) {
 	}
 }
 
-/* RF231 RF input power with RSSI value in the  valid range of 1 to 28: P_RF = RSSI_BASE_VAL + 3 * (RSSI - 1) [dBm] */
-float rssi2dBm(uint8_t rssi)
-{
-	if (rssi == 0)
-	{
-		return -91;
-	}
-	else if (rssi >= 1 && rssi <= 28)
-	{
-		return -91 + (rssi - 1) * 3;
-	}
-	else
-	{
-		return INVALID_DBM;
-	}
-}
 
 /* RF231 RF input power with ED value in the valid range of 0 to 84: P_RF = -91 + ED [dBm] */
 float ed2dBm(uint8_t ed)
@@ -332,9 +319,8 @@ float ed2dBm(uint8_t ed)
 	return dbm;
 }
 
-float ed2mW(uint8_t ed)
+float dbm2mW(float dbm)
 {
-	float dbm = ed2dBm(ed);
 	dbm = dbm / 10;
 	return pow(10, dbm);
 }
@@ -349,7 +335,10 @@ float mW2dBm(double mW)
 
 float computeInboundGain(uint8_t tx_power_level, uint8_t tx_ed, uint8_t noise_ed) 
 {
-	float inbound_gain = powerLevel2dBm(tx_power_level) - mW2dBm(ed2mW(tx_ed) - ed2mW(noise_ed));
+	float tx_dbm, noise_dbm = -97;
+	tx_dbm = ed2dBm(tx_ed);
+
+	float inbound_gain = powerLevel2dBm(tx_power_level) - mW2dBm(dbm2mW(tx_dbm) - dbm2mW(noise_dbm));
 	return inbound_gain;
 }
 

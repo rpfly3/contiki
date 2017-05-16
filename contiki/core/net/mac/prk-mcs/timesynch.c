@@ -11,6 +11,7 @@ void time_synch_init()
 /*----------------------- Send time synch packet ----------------------------*/
 void time_synch_send()
 {
+	SetPower(RF231_TX_PWR_MAX);
 	uint8_t *buf_ptr = rf231_tx_buffer;
 
 	uint8_t data_type = TIME_SYNCH_BEACON;

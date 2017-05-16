@@ -111,6 +111,7 @@ extern uint8_t channel_status[CHANNEL_NUM]; // record the channel state for sche
 extern link_er_t linkERTable[LINK_ER_TABLE_SIZE];
 extern uint8_t link_er_size;
 extern uint8_t er_sending_index;
+extern uint8_t conflict_set_size[LOCAL_LINK_ER_TABLE_SIZE];
 
 /* local link er info defined in controller module */
 extern local_link_er_t localLinkERTable[LOCAL_LINK_ER_TABLE_SIZE];

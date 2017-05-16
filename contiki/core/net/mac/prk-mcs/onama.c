@@ -102,32 +102,26 @@ void runLama(struct asn_t current_slot) {
 			my_prio = linkPriority(my_link_index, current_slot, i + RF231_CHANNEL_MIN);
 			for (uint8_t j = 0; j < link_er_size; ++j)
 			{
-				if (linkERTable[j].primary & (1 << local_link_er_index))
+				// Compare the selected link with its secondary conflict links
+				if (linkERTable[j].secondary & (1 << local_link_er_index))
 				{
-					continue;
-				}
-				else
-				{
-					// Compare the selected link with its secondary conflict links
-					if (linkERTable[j].secondary & (1 << local_link_er_index))
+					prio = linkPriority(linkERTable[j].link_index, current_slot, i + RF231_CHANNEL_MIN);
+					if (prio > my_prio)
 					{
-						prio = linkPriority(linkERTable[j].link_index, current_slot, i + RF231_CHANNEL_MIN);
-						if (prio > my_prio)
-						{
-							channel_status[i] = UNAVAILABLE;
-							--channel_count;
-							break;
-						}
-						else
-						{
-							continue;
-						}
+						channel_status[i] = UNAVAILABLE;
+						--channel_count;
+						break;
 					}
 					else
 					{
 						continue;
 					}
 				}
+				else
+				{
+					continue;
+				}
+
 			}	
 		}
 	

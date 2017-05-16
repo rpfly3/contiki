@@ -73,6 +73,17 @@ static void signalmap_signaling(uint8_t node_index)
 
 void prkmcs_control_signaling(uint8_t node_index)
 {
+	wait_us(rand() % CCA_MAX_BACK_OFF_TIME);
+	uint8_t idle_channel = getCCA(RF231_CCA_0, 0);
+	if (idle_channel)
+	{
+		ctimer_set(&send_timer, 500, prkmcs_send_ctrl, NULL);
+	}
+	else
+	{
+		start_rx();
+	}
+/*
 	if (node_addr == activeNodes[node_index])
 	{
 		ctimer_set(&send_timer, 500, prkmcs_send_ctrl, NULL);
@@ -81,7 +92,38 @@ void prkmcs_control_signaling(uint8_t node_index)
 	{
 		start_rx();
 	}
+*/
+}
 
+void showSM()
+{
+	printf("SM size %u: \r\n", valid_sm_entry_size);
+	for (uint8_t i = 0; i < valid_sm_entry_size; ++i)
+	{
+		if (i % 10 == 0)
+		{
+			printf("\r\n");
+		}
+		printf("Neighbor %u:  Inbound %f Outbound %f    ", signalMap[i].neighbor, signalMap[i].inbound_gain, signalMap[i].outbound_gain);
+
+	}
+	printf("\r\n");
+/*
+	printf("Neighbor SM size %u: \r\n", valid_nb_sm_entry_size);
+	for (uint8_t i = 0; i < valid_nb_sm_entry_size; ++i)
+	{
+		printf("Neighbor %u: \r\n", nbSignalMap[i].neighbor);
+		for (uint8_t j = 0; j < nbSignalMap[i].entry_num; ++j)
+		{
+			printf("Node %u: in %f out %f ", nbSignalMap[i].nb_sm[j].neighbor, nbSignalMap[i].nb_sm[j].inbound_gain, nbSignalMap[i].nb_sm[j].outbound_gain);
+			if (j % 5 == 0)
+			{
+				printf("\r\n");
+			}
+		}
+		printf("\r\n");
+	}
+ */
 }
 
 //Transceiving motes' slot operation
@@ -116,6 +158,12 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 			}
 		
 		}
+  /*
+		else if (current_asn.ls4b == BUILD_SIGNALMAP_PERIOD + 1)
+		{
+			showSM();
+		}
+  */
 		else
 		{
 
@@ -123,6 +171,12 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 			{
 				SetChannel(control_channel);
 				start_rx();
+				/*
+				for (uint8_t i = 0; i < local_link_er_size; ++i)
+				{
+					printf("Link %u conflict set size %u\r\n", localLinkERTable[i].link_index, conflict_set_size[i]);
+				}
+				*/
 			}
 			else if (duty_cicle == 1)
 			{
@@ -142,6 +196,7 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 				if (data_channel != INVALID_CHANNEL)
 				{
 					SetChannel(data_channel);
+					log_debug("Link index %u channel %u", my_link_index, data_channel);
 					if (!is_receiver)
 					{
 						ctimer_set(&send_timer, 500, prkmcs_send_data, NULL);
@@ -150,7 +205,6 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 					{
 						start_rx();
 					}
-					log_debug("Link index %u channel %u", my_link_index, data_channel);
 				}
 				else
 				{

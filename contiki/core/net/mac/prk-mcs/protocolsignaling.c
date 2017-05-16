@@ -11,12 +11,21 @@
 link_er_t linkERTable[LINK_ER_TABLE_SIZE];
 uint8_t link_er_size;
 uint8_t er_sending_index;
+uint8_t conflict_set_size[LOCAL_LINK_ER_TABLE_SIZE] = { 0 };
 
 /**************************** Link ER Table Management ************************/
 
 /* initialize link ER table with primary conflict links */
 void initLinkERTable() 
 {
+	if (activeLinksSize >= LINK_ER_TABLE_SIZE)
+	{
+		do
+		{
+			log_error("The local link ER table is too small.");
+		} while (1);
+	}
+
 	link_er_size = 0;
 	uint8_t added = 0;
 	// add non-local primary conflict links to the link ER table
@@ -41,6 +50,7 @@ void initLinkERTable()
 						linkERTable[link_er_size].primary = 0;
 						linkERTable[link_er_size].secondary = 0;
 						linkERTable[link_er_size].primary |= (1 << i);
+						conflict_set_size[i] += 1;
 						linkERTable[link_er_size].er_version = 0;
 						linkERTable[link_er_size].I_edge = INVALID_DBM;
 
@@ -81,6 +91,20 @@ uint8_t findLinkERTableIndex(uint8_t index)
 	return link_er_index;
 }
 
+void printLinkERTable()
+{
+	printf("Link ER Table Size %u: \r\n", link_er_size);
+	for (uint8_t i = 0; i < link_er_size; ++i)
+	{
+		if (i % 10 == 0)
+		{
+			printf("\r\n");
+		}
+		printf("Link %u    ", linkERTable[i].link_index);
+
+	}
+	printf("\r\n");
+}
 /* update the link er table according to received ER information 
  * Note that these info are assumed to be valid. So caller should do validness checking.
 */
@@ -146,81 +170,50 @@ bool isConflicting(uint8_t link_er_index, uint8_t local_link_er_index)
 	{
 		// check if the link sender conflict with the receiver itself
 		inbound_gain = getInboundGain(linkERTable[link_er_index].sender);
-		if (!isEqual(inbound_gain, INVALID_GAIN))
+		// Note: INVALID_GAIN is large
+		if (inER(tx_power, inbound_gain, localLinkERTable[local_link_er_index].I_edge))
 		{
-			if (inER(tx_power, inbound_gain, localLinkERTable[local_link_er_index].I_edge))
-			{
-				conflicted = true;
-			}
-			else
-			{
-				// do nothing	
-			}
+			conflicted = true;
 		}
 		else
 		{
 			// do nothing	
 		}
-
 		
 		// check if the sender conflicts with the link receiver
 		outbound_gain = getNbOutboundGain(localLinkERTable[local_link_er_index].neighbor, linkERTable[link_er_index].receiver);
-		if (!isEqual(outbound_gain, INVALID_GAIN))
+		if (inER(tx_power, outbound_gain, linkERTable[link_er_index].I_edge))
 		{
-			if (inER(tx_power, outbound_gain, linkERTable[link_er_index].I_edge))
-			{
-				conflicted = true;
-			}
-			else
-			{
-				// do nothing
-			}
+			conflicted = true;
 		}
 		else
 		{
 			// do nothing
 		}
-
 	}
 	else
 	{
 		// check if the sender itself conflict with the link receiver
 		outbound_gain = getOutboundGain(linkERTable[link_er_index].receiver); 
-		if (!isEqual(outbound_gain, INVALID_GAIN))
+		if (inER(tx_power, outbound_gain, linkERTable[link_er_index].I_edge))
 		{
-			if (inER(tx_power, outbound_gain, linkERTable[link_er_index].I_edge))
-			{
-				conflicted = true;
-			}
-			else
-			{
-				// do nothing
-			}
+			conflicted = true;
 		}
 		else
 		{
 			// do nothing
 		}
-
 
 		// check if the link sender conflict with the receiver
 		inbound_gain = getNbInboundGain(linkERTable[link_er_index].sender, localLinkERTable[local_link_er_index].neighbor);
-		if (!isEqual(inbound_gain, INVALID_GAIN))
+		if (inER(tx_power, inbound_gain, localLinkERTable[local_link_er_index].I_edge))
 		{
-			if (inER(tx_power, inbound_gain, localLinkERTable[local_link_er_index].I_edge))
-			{
-				conflicted = true;
-			}
-			else
-			{
-				// do nothing
-			}
+			conflicted = true;
 		}
 		else
 		{
 			// do nothing
 		}
-
 	}
 
 	return conflicted;
@@ -229,7 +222,7 @@ bool isConflicting(uint8_t link_er_index, uint8_t local_link_er_index)
 /* update contention due to local link er change of link @index */
 void updateConflictGraphForLocalERChange(uint8_t local_link_er_index)
 {
-	for (uint8_t i = 0; i < link_er_size; i++)
+	for (uint8_t i = 0; i < link_er_size; ++i)
 	{
 		// ER change doesn't affect primary conflict
 		if (linkERTable[i].primary & (1 << local_link_er_index))
@@ -241,11 +234,25 @@ void updateConflictGraphForLocalERChange(uint8_t local_link_er_index)
 			// Only update secondary conflict relations
 			if (isConflicting(i, local_link_er_index))
 			{
-				linkERTable[i].secondary |= (1 << local_link_er_index);
+				if (linkERTable[i].secondary & (1 << local_link_er_index))
+				{
+				}
+				else
+				{
+					linkERTable[i].secondary |= (1 << local_link_er_index);
+					conflict_set_size[local_link_er_index] += 1;
+				}
 			}
 			else
 			{
-				linkERTable[i].secondary &= ~(1 << local_link_er_index);
+				if (linkERTable[i].secondary & (1 << local_link_er_index))
+				{
+					linkERTable[i].secondary &= ~(1 << local_link_er_index);
+					conflict_set_size[local_link_er_index] -= 1;
+				}
+				else
+				{
+				}
 			}
 		}
 	}
@@ -256,7 +263,7 @@ void updateConflictGraphForLocalERChange(uint8_t local_link_er_index)
 /* update contention due to link er change of node @index */
 void updateConflictGraphForERChange(uint8_t link_er_index)
 {
-	for (uint8_t i = 0; i < local_link_er_size; i++)
+	for (uint8_t i = 0; i < local_link_er_size; ++i)
 	{
  		// ER change doesn't affect primary conflict
 		if (linkERTable[link_er_index].primary & (1 << i))
@@ -268,11 +275,25 @@ void updateConflictGraphForERChange(uint8_t link_er_index)
 			// Only update secondary conflict relations
 			if (isConflicting(link_er_index, i))
 			{
-				linkERTable[link_er_index].secondary |= (1 << i);
+				if (linkERTable[link_er_index].secondary & (1 << i))
+				{
+				}
+				else
+				{
+					linkERTable[link_er_index].secondary |= (1 << i);
+					conflict_set_size[i] += 1;
+				}
 			}
 			else
 			{
-				linkERTable[link_er_index].secondary &= ~(1 << i);
+				if (linkERTable[link_er_index].secondary & (1 << i))
+				{
+					linkERTable[link_er_index].secondary &= ~(1 << i);
+					conflict_set_size[i] -= 1;
+				}
+				else
+				{
+				}
 			}
 		}
 	}
@@ -284,28 +305,23 @@ void updateConflictGraphForERChange(uint8_t link_er_index)
 
 
 /* prepare ER info for sending and invalid info can be detected by checking link_index == INVALID_INDEX */
+// Sharing ER has two purposes: 1. let nodes out of communication range knows the ER, because interfering range could be larger than communication rage
+// 2. let sender's receivers knows that it could interfere with others
 bool prepareERSegment(uint8_t *ptr)
 {
 	bool prepared = false;
-	if (!isEqual(linkERTable[er_sending_index].I_edge, INVALID_DBM))
+	float outbound_gain = getOutboundGain(linkERTable[er_sending_index].receiver);
+	if (inER(tx_power, outbound_gain, linkERTable[er_sending_index].I_edge))
 	{
-		if (linkERTable[er_sending_index].secondary || linkERTable[er_sending_index].primary)
-		{
-			memcpy(ptr, &(linkERTable[er_sending_index].link_index), sizeof(uint8_t));
-			ptr += sizeof(uint8_t);
-			memcpy(ptr, &(linkERTable[er_sending_index].er_version), sizeof(uint16_t));
-			ptr += sizeof(uint16_t);
-			memcpy(ptr, &(linkERTable[er_sending_index].I_edge), sizeof(float));
-			ptr += sizeof(float);
+		memcpy(ptr, &(linkERTable[er_sending_index].link_index), sizeof(uint8_t));
+		ptr += sizeof(uint8_t);
+		memcpy(ptr, &(linkERTable[er_sending_index].er_version), sizeof(uint16_t));
+		ptr += sizeof(uint16_t);
+		memcpy(ptr, &(linkERTable[er_sending_index].I_edge), sizeof(float));
+		ptr += sizeof(float);
 
-			prepared = true;		
-		}
-		else
-		{
-			// do nothing
-		}
-
-	}	
+		prepared = true;
+	}
 	else
 	{
 		// do nothing
@@ -318,7 +334,5 @@ bool prepareERSegment(uint8_t *ptr)
 void protocolSignalingInit()
 {
 	er_sending_index = 0;
-	local_er_sending_index = 0;
-
 	initLinkERTable();
 }

@@ -10,6 +10,7 @@ void test_init()
 
 void test_send()
 {
+	SetPower(RF231_TX_PWR_MAX);
 	uint8_t *buf_ptr = rf231_tx_buffer;
 	uint8_t *num_sm = NULL;
 	uint8_t data_type = TEST_PACKET;
@@ -63,9 +64,9 @@ void test_receive(uint8_t *ptr)
 		printf("Received Test %u from %u: R-ED %u N-ED %u\r\n", sequence_no, sender, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed, rf231_rx_buffer[rf231_rx_buffer_head].noise_ed);
 		// Compute inbound gain only when EDs are valid
 		if ((rf231_rx_buffer[rf231_rx_buffer_head].tx_ed != INVALID_ED) && (rf231_rx_buffer[rf231_rx_buffer_head].noise_ed != INVALID_ED)
-			&& (rf231_rx_buffer[rf231_rx_buffer_head].tx_ed > rf231_rx_buffer[rf231_rx_buffer_head].noise_ed))
+			&& (rf231_rx_buffer[rf231_rx_buffer_head].tx_ed >= 0))
 		{
-			float inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed, rf231_rx_buffer[rf231_rx_buffer_head].noise_ed);
+			float inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed, 0);
 			updateInboundGain(sender, inbound_gain);
 		}
 		else
@@ -83,5 +84,4 @@ void test_receive(uint8_t *ptr)
 		sm_receive(ptr, sender);
 		ptr += SM_SEGMENT_LENGTH;
 	}
-	log_debug("SM size %u, NB SM size %u", valid_sm_entry_size, valid_nb_sm_entry_size);
 }

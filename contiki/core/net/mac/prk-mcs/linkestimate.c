@@ -23,26 +23,27 @@ void linkestimateInit() {
 		{
 			do
 			{
-				log_error("The PDR table is too small.");
+				log_error("The PDR table is full.");
 			} while (1);
-		}
-
-		if (activeLinks[localLinks[i]].receiver == node_addr)
-		{
-
-			// Initialize PDR table entry
-			pdrTable[pdr_table_size].sender = activeLinks[localLinks[i]].sender;
-			pdrTable[pdr_table_size].sequence_num = 0;
-			pdrTable[pdr_table_size].next_update_sequence = PDR_COMPUTE_WINDOW_SIZE;
-			pdrTable[pdr_table_size].received_pkt = 0;
-			pdrTable[pdr_table_size].sent_pkt = 0;
-			pdrTable[pdr_table_size].pdr = INVALID_PDR;
-			pdrTable[pdr_table_size].pdr_sample = INVALID_PDR;
-			++pdr_table_size;
 		}
 		else
 		{
-			continue;
+			if (activeLinks[localLinks[i]].receiver == node_addr)
+			{
+				// Initialize PDR table entry
+				pdrTable[pdr_table_size].sender = activeLinks[localLinks[i]].sender;
+				pdrTable[pdr_table_size].sequence_num = 0;
+				pdrTable[pdr_table_size].next_update_sequence = PDR_COMPUTE_WINDOW_SIZE;
+				pdrTable[pdr_table_size].received_pkt = 0;
+				pdrTable[pdr_table_size].sent_pkt = 0;
+				pdrTable[pdr_table_size].pdr = INVALID_PDR;
+				pdrTable[pdr_table_size].pdr_sample = INVALID_PDR;
+				++pdr_table_size;
+			}
+			else
+			{
+				// do nothing
+			}
 		}
 	}
 }

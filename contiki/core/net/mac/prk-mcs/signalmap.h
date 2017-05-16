@@ -9,7 +9,7 @@ enum {
 	SIGNAL_MAP_SIZE = 75,
 	NB_SIGNAL_MAP_SIZE = 75,
 	NB_SM_SIZE = 75,
-	INVALID_GAIN = 0,
+	INVALID_GAIN = 255,
 };
 
 /* signal map for the node itself, and note that the unit of gain is db */

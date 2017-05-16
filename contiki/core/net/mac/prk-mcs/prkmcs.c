@@ -38,18 +38,22 @@ void prkmcsInit(void)
 			prkmcs_data_sequence_no[i] = 1;
 		}
 
-		SetPower(RF231_TX_PWR_MAX);
+		tx_power = powerLevel2dBm(DATA_POWER);
 		prkmcs_slot_operation_start();
 		log_info("PRKMCS is enabled");
 	}
 	else
 	{
-		
+		// turn off radio
+		RF231_RSTClr();
+		delay_us(t10);
+		RF231_RSTSet();
 	}
 }
 
 void prkmcs_send_ctrl() 
 {
+	SetPower(RF231_TX_PWR_MAX);
 	uint8_t *buf_ptr = rf231_tx_buffer;
 	uint8_t data_type = CONTROL_PACKET;
 	uint8_t *num_er = NULL;
@@ -114,6 +118,7 @@ void prkmcs_send_ctrl()
 
 void prkmcs_send_data() 
 {
+	SetPower(RF231_TX_PWR_MIN);
 	uint8_t local_index = findLocalIndex(my_link_index);
 	prkmcs_data_packet_seq_no = prkmcs_data_sequence_no[local_index];
 

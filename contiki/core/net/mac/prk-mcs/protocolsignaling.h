@@ -14,8 +14,8 @@ typedef struct {
 	/* i-th bit indicates if this link contends with i-th link in localLinkERTabel */
 	float I_edge;
 	/* each bit indicates the conflict relation with corresponding link in local er table */
-	uint8_t primary;
-	uint8_t secondary;
+	uint16_t primary;
+	uint16_t secondary;
 } link_er_t;
 
 
