@@ -11,8 +11,7 @@ typedef struct {
 	uint8_t link_index;
 	/* ER version of the receiver */
 	uint16_t er_version;
-	/* i-th bit indicates if this link contends with i-th link in localLinkERTabel */
-	float I_edge;
+	uint8_t I_edge;
 	/* each bit indicates the conflict relation with corresponding link in local er table */
 	uint16_t primary;
 	uint16_t secondary;
@@ -23,7 +22,7 @@ void protocolSignalingInit();
 uint8_t findLinkERTableIndex(uint8_t index);
 uint8_t findEmptyLinkERTableIndex();
 bool prepareERSegment(uint8_t *ptr);
-void updateLinkER(uint8_t link_index, uint16_t er_version, float I_edge);
+void updateLinkER(uint8_t link_index, uint16_t er_version, uint8_t I_edge);
 void updateConflictGraphForERChange(uint8_t link_er_index);
 void updateConflictGraphForLocalERChange(uint8_t local_link_er_index);
 #endif /* __PROTOCOLSIGNALING_H__ */

@@ -104,7 +104,7 @@ void showSM()
 		{
 			printf("\r\n");
 		}
-		printf("Neighbor %u:  Inbound %f Outbound %f    ", signalMap[i].neighbor, signalMap[i].inbound_gain, signalMap[i].outbound_gain);
+		printf("Neighbor %u:  Inbound %u Outbound %u    ", signalMap[i].neighbor, signalMap[i].inbound_ed, signalMap[i].outbound_ed);
 
 	}
 	printf("\r\n");
@@ -143,18 +143,23 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 			}
 			else if (duty_cicle == 1)
 			{
-				uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;				
+				uint8_t node_index = (((current_asn.ls4b / TIME_SYNCH_FREQUENCY) + 1) * 2 - 2) % activeNodesSize;				
 				signalmap_signaling(node_index);
 			}
 			else if (duty_cicle == 2)
 			{
-				uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;				
+				uint8_t node_index = (((current_asn.ls4b / TIME_SYNCH_FREQUENCY) + 1) * 2 - 2) % activeNodesSize;				
 				signalmap_signaling(node_index);	
 			}
 			else if (duty_cicle == 3)
 			{
-				uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;				
+				uint8_t node_index = (((current_asn.ls4b / TIME_SYNCH_FREQUENCY) + 1) * 2 - 1) % activeNodesSize;				
 				signalmap_signaling(node_index);
+			}
+			else if (duty_cicle == 4)
+			{
+				uint8_t node_index = (((current_asn.ls4b / TIME_SYNCH_FREQUENCY) + 1) * 2 - 1) % activeNodesSize;				
+				signalmap_signaling(node_index);	
 			}
 		
 		}
@@ -184,13 +189,7 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 				uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;
 				prkmcs_control_signaling(node_index);
 			}
-			else if (duty_cicle == 2)
-			{
-				SetChannel(control_channel);
-				uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;
-				prkmcs_control_signaling(node_index);	
-			}
-			else if (duty_cicle == 3)
+			else 
 			{
 				runLama(current_asn);
 				if (data_channel != INVALID_CHANNEL)

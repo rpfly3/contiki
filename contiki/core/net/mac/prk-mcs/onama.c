@@ -114,12 +114,12 @@ void runLama(struct asn_t current_slot) {
 					}
 					else
 					{
-						continue;
+						// do nothing
 					}
 				}
 				else
 				{
-					continue;
+					// do nothing
 				}
 
 			}	

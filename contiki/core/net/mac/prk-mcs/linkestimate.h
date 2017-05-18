@@ -27,9 +27,11 @@ typedef struct {
     uint8_t pdr;
     /* Y_{S, R}(t) for inbound DATA for the latest ER, range [0 ... 100] */
     uint8_t pdr_sample;
+	/* average neighbor interference (mW)*/
+	float nb_I;
 } pdr_t;
 
 uint8_t findPDRTableIndex(linkaddr_t sender);
 void linkestimateInit();
-void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num);
+void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, uint8_t rx_ed);
 #endif /* __LINK_ESTIMATOR_H__ */

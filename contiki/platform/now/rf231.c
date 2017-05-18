@@ -658,6 +658,7 @@ void rf231_csma_send()
 	RF231_SLP_TRClr();
 }
 
+uint8_t ED;
 void EXTI1_IRQHandler(void)
 {			
 	if (EXTI_GetITStatus(EXTI_Line1) != RESET) 
@@ -669,7 +670,7 @@ void EXTI1_IRQHandler(void)
 		}
 		else
 		{
-
+			ED = GetED();
 			process_poll(&irq_clear_process);
 		}
 	}
@@ -684,7 +685,6 @@ PROCESS_THREAD(irq_clear_process, ev, data)
 	{
 		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 
-		uint8_t ED = GetED();
 		uint8_t interrupt_status = ReadRegister(RF231_IRQ_STATUS);
 
 		// Check if the receiver buffer is full 

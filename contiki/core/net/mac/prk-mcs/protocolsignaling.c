@@ -52,7 +52,7 @@ void initLinkERTable()
 						linkERTable[link_er_size].primary |= (1 << i);
 						conflict_set_size[i] += 1;
 						linkERTable[link_er_size].er_version = 0;
-						linkERTable[link_er_size].I_edge = INVALID_DBM;
+						linkERTable[link_er_size].I_edge = INVALID_ED;
 
 						added = 1;
 					}
@@ -108,7 +108,7 @@ void printLinkERTable()
 /* update the link er table according to received ER information 
  * Note that these info are assumed to be valid. So caller should do validness checking.
 */
-void updateLinkER(uint8_t link_index, uint16_t er_version, float I_edge)
+void updateLinkER(uint8_t link_index, uint16_t er_version, uint8_t I_edge)
 {
 	uint8_t link_er_index = findLinkERTableIndex(link_index); 
 	if (link_er_index == INVALID_INDEX)
@@ -155,23 +155,23 @@ void updateLinkER(uint8_t link_index, uint16_t er_version, float I_edge)
 
 /*********************** Contention Table  Management **********************/
 
-bool inER(float tx_power, float gain, float I_edge) 
+bool inER(uint8_t ed, uint8_t I_edge) 
 {
-	bool in_er = ((tx_power - gain) >= I_edge);
+	bool in_er = (ed == INVALID_ED) ? false : (ed >= I_edge);
 	return in_er;
 }
 
 bool isConflicting(uint8_t link_er_index, uint8_t local_link_er_index) 
 {
-	float inbound_gain, outbound_gain;
+	uint8_t inbound_ed, outbound_ed;
 	bool conflicted = false;
 
 	if (!localLinkERTable[local_link_er_index].is_sender)
 	{
 		// check if the link sender conflict with the receiver itself
-		inbound_gain = getInboundGain(linkERTable[link_er_index].sender);
+		inbound_ed = getInboundED(linkERTable[link_er_index].sender);
 		// Note: INVALID_GAIN is large
-		if (inER(tx_power, inbound_gain, localLinkERTable[local_link_er_index].I_edge))
+		if (inER(inbound_ed, localLinkERTable[local_link_er_index].I_edge))
 		{
 			conflicted = true;
 		}
@@ -181,8 +181,8 @@ bool isConflicting(uint8_t link_er_index, uint8_t local_link_er_index)
 		}
 		
 		// check if the sender conflicts with the link receiver
-		outbound_gain = getNbOutboundGain(localLinkERTable[local_link_er_index].neighbor, linkERTable[link_er_index].receiver);
-		if (inER(tx_power, outbound_gain, linkERTable[link_er_index].I_edge))
+		outbound_ed = getNbOutboundED(localLinkERTable[local_link_er_index].neighbor, linkERTable[link_er_index].receiver);
+		if (inER(outbound_ed, linkERTable[link_er_index].I_edge))
 		{
 			conflicted = true;
 		}
@@ -194,8 +194,8 @@ bool isConflicting(uint8_t link_er_index, uint8_t local_link_er_index)
 	else
 	{
 		// check if the sender itself conflict with the link receiver
-		outbound_gain = getOutboundGain(linkERTable[link_er_index].receiver); 
-		if (inER(tx_power, outbound_gain, linkERTable[link_er_index].I_edge))
+		outbound_ed = getOutboundED(linkERTable[link_er_index].receiver); 
+		if (inER(outbound_ed, linkERTable[link_er_index].I_edge))
 		{
 			conflicted = true;
 		}
@@ -205,8 +205,8 @@ bool isConflicting(uint8_t link_er_index, uint8_t local_link_er_index)
 		}
 
 		// check if the link sender conflict with the receiver
-		inbound_gain = getNbInboundGain(linkERTable[link_er_index].sender, localLinkERTable[local_link_er_index].neighbor);
-		if (inER(tx_power, inbound_gain, localLinkERTable[local_link_er_index].I_edge))
+		inbound_ed = getNbInboundED(linkERTable[link_er_index].sender, localLinkERTable[local_link_er_index].neighbor);
+		if (inER(inbound_ed, localLinkERTable[local_link_er_index].I_edge))
 		{
 			conflicted = true;
 		}
@@ -310,15 +310,15 @@ void updateConflictGraphForERChange(uint8_t link_er_index)
 bool prepareERSegment(uint8_t *ptr)
 {
 	bool prepared = false;
-	float outbound_gain = getOutboundGain(linkERTable[er_sending_index].receiver);
-	if (inER(tx_power, outbound_gain, linkERTable[er_sending_index].I_edge))
+	uint8_t outbound_ed = getOutboundED(linkERTable[er_sending_index].receiver);
+	if (inER(outbound_ed, linkERTable[er_sending_index].I_edge))
 	{
 		memcpy(ptr, &(linkERTable[er_sending_index].link_index), sizeof(uint8_t));
 		ptr += sizeof(uint8_t);
 		memcpy(ptr, &(linkERTable[er_sending_index].er_version), sizeof(uint16_t));
 		ptr += sizeof(uint16_t);
-		memcpy(ptr, &(linkERTable[er_sending_index].I_edge), sizeof(float));
-		ptr += sizeof(float);
+		memcpy(ptr, &(linkERTable[er_sending_index].I_edge), sizeof(uint8_t));
+		ptr += sizeof(uint8_t);
 
 		prepared = true;
 	}

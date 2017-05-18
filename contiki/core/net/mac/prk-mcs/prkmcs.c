@@ -190,6 +190,7 @@ void prkmcs_send_data()
 void prkmcs_receive() 
 {
 	uint8_t *buf_ptr = rf231_rx_buffer[rf231_rx_buffer_head].data;
+	uint8_t rx_ed = rf231_rx_buffer[rf231_rx_buffer_head].tx_ed;
 	uint8_t data_type;
 
 	buf_ptr += FCF; // remove fcf byte
@@ -242,8 +243,8 @@ void prkmcs_receive()
 
 		if (receiver == node_addr)
 		{
-			printf("Received Data %u from %u\r\n", packet_seq_no, sender);
-			updateLinkQuality(sender, packet_seq_no);
+			printf("Received Data %u from %u: rx ed %u\r\n", packet_seq_no, sender, rx_ed);
+			updateLinkQuality(sender, packet_seq_no, rx_ed);
 
 			for (uint8_t i = 0; i < num_er; ++i)
 			{

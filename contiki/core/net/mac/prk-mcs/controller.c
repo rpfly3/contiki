@@ -26,7 +26,8 @@ uint8_t local_er_sending_index;
 /***************** Local Link ER Table Management ****************/
 
 /* initialize local link ER table */
-void initLocalLinkERTable() {
+void initLocalLinkERTable() 
+{
 	if (localLinksSize >= LOCAL_LINK_ER_TABLE_SIZE)
 	{
 		do
@@ -53,7 +54,7 @@ void initLocalLinkERTable() {
 		localLinkERTable[i].pdr_req = PDR_REQUIREMENT;
 		localLinkERTable[i].er_version = 0;
 		localLinkERTable[i].sm_index = INVALID_INDEX;
-		localLinkERTable[i].I_edge = INVALID_DBM;
+		localLinkERTable[i].I_edge = INVALID_ED;
     }
 
 	return;
@@ -102,7 +103,7 @@ void initLocalLinkER(uint8_t local_link_er_index)
 	{
 		uint8_t index = valid_sm_entry_size - 1;	
 
-		localLinkERTable[local_link_er_index].I_edge = tx_power - signalMap[index].inbound_gain;
+		localLinkERTable[local_link_er_index].I_edge = signalMap[index].inbound_ed;
 		localLinkERTable[local_link_er_index].er_version = 1;
 		localLinkERTable[local_link_er_index].sm_index = index;
 
@@ -130,31 +131,36 @@ void updateER(uint8_t local_link_er_index, uint8_t pdr_index)
 	else
 	{
 		uint8_t i = localLinkERTable[local_link_er_index].sm_index;
-		float current_I_edge = localLinkERTable[local_link_er_index].I_edge;
 		float deltaI_dB = pdr2DeltaIdB(pdr_index, local_link_er_index);
+		float current_I_mW = pdrTable[pdr_index].nb_I;
+		float current_I_dBm = mW2dBm(current_I_mW);
+		float next_I_dBm = current_I_dBm + deltaI_dB;
+		float next_I_mW = dbm2mW(next_I_dBm);
+		float deltaI_mW = next_I_mW - current_I_mW;
+		float totalI_mW = 0;
 
-		float next_I_edge = current_I_edge + deltaI_dB;
-
-		float total_I = 0;
-
-		if (deltaI_dB < 0)
+		if (deltaI_mW < 0)
 		{
 			while (i < valid_sm_entry_size - 1)
 			{
-				total_I += (tx_power - signalMap[i].inbound_gain);
-				if (total_I >= fabs(deltaI_dB))
+				float inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, signalMap[i].inbound_ed, 0);
+				float erI_mW = dbm2mW(tx_power - inbound_gain);
+				totalI_mW += erI_mW;
+				if (fabs(totalI_mW) >= fabs(deltaI_mW))
 				{
 					break;
 				}
 				++i;
 			}
 		}
-		else if (deltaI_dB > 0)
+		else if (deltaI_mW > 0)
 		{
 			while (i > 0)
 			{
-				total_I += (tx_power - signalMap[i].inbound_gain);
-				if (total_I > fabs(deltaI_dB))
+				float inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, signalMap[i].inbound_ed, 0);
+				float erI_mW = dbm2mW(tx_power - inbound_gain);
+				totalI_mW += erI_mW;
+				if (fabs(totalI_mW) > fabs(deltaI_mW))
 				{
 					break;
 				}
@@ -163,11 +169,11 @@ void updateER(uint8_t local_link_er_index, uint8_t pdr_index)
 		}
 	
 		localLinkERTable[local_link_er_index].sm_index = i;
-		localLinkERTable[local_link_er_index].I_edge = tx_power - signalMap[i].inbound_gain;
+		localLinkERTable[local_link_er_index].I_edge = signalMap[i].inbound_ed;
 		++(localLinkERTable[local_link_er_index].er_version);
 
 		updateConflictGraphForLocalERChange(local_link_er_index);
-		printf("SM index %u, SM size %u, I_edge %f\r\n", i, valid_sm_entry_size, localLinkERTable[local_link_er_index].I_edge);
+		printf("SM index %u, SM size %u, I_edge %u, deltaI_mW %f\r\n", i, valid_sm_entry_size, localLinkERTable[local_link_er_index].I_edge, deltaI_mW);
 	}
 
 	return;
@@ -207,8 +213,8 @@ bool prepareLocalERSegment(uint8_t *ptr)
 		ptr += sizeof(uint8_t);
 		memcpy(ptr, &(localLinkERTable[local_er_sending_index].er_version), sizeof(uint16_t));
 		ptr += sizeof(uint16_t);
-		memcpy(ptr, &(localLinkERTable[local_er_sending_index].I_edge), sizeof(float));
-		ptr += sizeof(float);
+		memcpy(ptr, &(localLinkERTable[local_er_sending_index].I_edge), sizeof(uint8_t));
+		ptr += sizeof(uint8_t);
 
 		prepared = true;
 	}
@@ -229,9 +235,10 @@ void er_receive(uint8_t *ptr, linkaddr_t sender)
 	uint16_t er_version;
 	memcpy(&er_version, ptr, sizeof(uint16_t));
 	ptr += sizeof(uint16_t);
-	float I_edge;
-	memcpy(&I_edge, ptr, sizeof(float));
-	ptr += sizeof(float);
+	uint8_t I_edge;
+	memcpy(&I_edge, ptr, sizeof(uint8_t));
+	ptr += sizeof(uint8_t);
+
 	if (link_index < activeLinksSize)
 	{
 		//log_debug("link index %d -- er_version %d -- I_edge %f", link_index, er_version, I_edge);

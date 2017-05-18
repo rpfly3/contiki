@@ -28,8 +28,8 @@ typedef struct {
     uint16_t er_version;
 	/* signal map index defining the ER boundary */
 	uint8_t sm_index;
-    /* use the I_edge (in dBm) to indicate the ER boundary */
-    float I_edge;
+    /* use the I_edge (in ED) to indicate the ER boundary */
+    uint8_t I_edge;
 } local_link_er_t;
 
 

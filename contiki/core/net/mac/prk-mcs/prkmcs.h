@@ -46,7 +46,7 @@ enum
 
 enum
 {
-	TIME_SYNCH_FREQUENCY      = 4,
+	TIME_SYNCH_FREQUENCY      = 5,
 	PRKMCS_MAX_PACKET_LENGTH  = 125,
 	PRKMCS_MIN_PACKET_LENGTH  = 3,
 
@@ -55,10 +55,10 @@ enum
 	INVALID_POWER_LEVEL       = 0xFF,
 	INVALID_ED				  = 0xFF,
 
-	ER_SEGMENT_LENGTH         = 7,
-	SM_SEGMENT_LENGTH         = 9,
+	ER_SEGMENT_LENGTH         = 4,
+	SM_SEGMENT_LENGTH         = 3,
 
-	MAX_ER_SEG_NUM = 17,
+	MAX_ER_SEG_NUM = 30,
 
 	CCA_MAX_BACK_OFF_TIME     = 1000,
 	CCA_ED_THRESHOLD          = 10,
@@ -72,11 +72,11 @@ Packet format
 ER segment format
 ------------------------------------
 | Link Index | ER Version | I Edge |
-----1 byte-------2 byte-----4 byte--
+----1 byte-------2 byte-----1 byte--
 SM segment format
 ---------------------------------------------------
 | Neighbor | Inbound Gain | Outbound Gain |
----1 byte-----4 bytes---------4 bytes-----
+---1 byte-----1 bytes---------1 bytes-----
 */
 
 /* active link info defined in topology module*/
