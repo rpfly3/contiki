@@ -12,6 +12,17 @@
 #include <string.h>
 #include <stdio.h>
 
+// probably the semaphore would be used, so I use wrap the disable/enable with take and give
+static inline void take()
+{
+    __disable_irq();
+}
+
+static inline void give()
+{
+    __enable_irq();
+}
+
 void rf231_arch_init(void) {
     /* Initialize spi */
     spi1_init();
@@ -24,11 +35,15 @@ void rf231_arch_init(void) {
 
 void WriteRegister(uint8_t reg, uint8_t value)
 {
+    /*
 	if (RF231_GetSEL() == 0)
 	{
 		log_error("Radio being accessed by others");
 		return;
 	}
+    */
+    take();
+
     /* Initiate write operation */
     RF231_SELClr();
 
@@ -42,16 +57,23 @@ void WriteRegister(uint8_t reg, uint8_t value)
 
     /* End write operation */
     RF231_SELSet();
+
+    give();
+
+    return;
 }
 uint8_t ReadRegister(uint8_t reg)
 {
+    /*
 	if (RF231_GetSEL() == 0)
 	{
 		log_error("Radio being accessed by others");
 		return 0;
 	}
-
+    */
     uint8_t RegisterValue;
+
+    take();
     /* Initiate read operation */
     RF231_SELClr();
 
@@ -65,7 +87,9 @@ uint8_t ReadRegister(uint8_t reg)
 
     /* End read operation */
     RF231_SELSet(); 
-    
+
+    give();
+
     return RegisterValue;
 }
 
@@ -73,11 +97,15 @@ uint8_t ReadRegister(uint8_t reg)
 
 void WriteFrame(uint8_t *WriteBuffer, uint8_t length)
 {
+    /*
 	if (RF231_GetSEL() == 0)
 	{
 		log_error("Radio being accessed by others");
 		return;
 	}
+    */
+    
+    take();
 
     /* Initiate write operation */
     RF231_SELClr();
@@ -99,51 +127,24 @@ void WriteFrame(uint8_t *WriteBuffer, uint8_t length)
     
     /* End write operation */
     RF231_SELSet();
-}
 
-uint8_t GetFrame(uint8_t *ReadBuffer)
-{
-	if (RF231_GetSEL() == 0)
-	{
-		log_error("Radio being accessed by others");
-		return 0;
-	}
+    give();
 
-    uint8_t FrameLength, RxLength = 0;
-
-    RF231_SELClr();
-    SPI1_Write(RF231_CMD_FRAME_READ);
-    SPI1_Read();
-
-    SPI1_Write(0);
-    SPI1_Read();
-
-    SPI1_Write(0);
-    FrameLength = SPI1_Read();
-    while(RxLength < FrameLength)
-    {
-        SPI1_Write(0);
-        *ReadBuffer++ = SPI1_Read();
-        RxLength++;
-    }
-
-    SPI1_Write(0);
-    //LQI
-    SPI1_Read();
-
-    RF231_SELSet();
-
-    return FrameLength;
+    return;
 }
 
 
 void ReadFrame(rx_frame_t *ReadBuffer)
 {
+    /*
 	if (RF231_GetSEL() == 0)
 	{
 		log_error("Radio being accessed by others");
 		return;
 	}
+    */
+    
+    take();
 
     /* Initiate read operation */
     RF231_SELClr();
@@ -160,37 +161,39 @@ void ReadFrame(rx_frame_t *ReadBuffer)
     if((FrameLength < RF231_MIN_FRAME_LENGTH) || (FrameLength > RF231_MAX_FRAME_LENGTH)) {
         /* Length test fail and set the corresponding field*/
         ReadBuffer->length = 0;
-        ReadBuffer->lqi = 0;
-	    RF231_SELSet();
-        return; 
     }
-
-    ReadBuffer->length = FrameLength - CHECKSUM_LEN;
-    uint8_t *rx_data = (ReadBuffer->data);
-    
-    uint8_t temp = ReadBuffer->length;
-
-    /* Get PSDU data */
-    while(temp--)
+    else
     {
-        SPI1_Write(0);
-        *rx_data++ = SPI1_Read();
-    } 
-	
-	/* discard automatically verified checksum */
-	temp = CHECKSUM_LEN;
-	while (temp--)
-	{
-		SPI1_Write(0);
-		SPI1_Read();
-	}
+        ReadBuffer->length = FrameLength - CHECKSUM_LEN;
+        uint8_t *rx_data = (ReadBuffer->data);
 
-    /* Get LQI info */
-    SPI1_Write(0);
-    ReadBuffer->lqi = SPI1_Read();
+        uint8_t temp = ReadBuffer->length;
+
+        /* Get PSDU data */
+        while (temp--)
+        {
+            SPI1_Write(0);
+            *rx_data++ = SPI1_Read();
+        }
+
+        /* discard automatically verified checksum */
+        temp = CHECKSUM_LEN;
+        while (temp--)
+        {
+            SPI1_Write(0);
+            SPI1_Read();
+        }
+
+        /* Discard LQI info */
+        SPI1_Write(0);
+        SPI1_Read();
+    }
 
     /* End read */
     RF231_SELSet();
+    give();
+
+    return;
 } 
 
 /*========Functions used to read and write to SRAM========*/
@@ -198,59 +201,72 @@ void ReadFrame(rx_frame_t *ReadBuffer)
 /* Write Frame buffer with random access */
 void WriteSRAM(uint8_t addr, uint8_t *data, uint8_t len) {
     /* Check the address and lenth */
-    if(addr + len > 0x7F) {
-        return;
-    }
+    if (addr + len <= 0x7F)
+    {
 
+        /*
 	if (RF231_GetSEL() == 0)
 	{
 		log_error("Radio being accessed by others");
 		return;
 	}
+    */
+        take();
+        RF231_SELClr();
 
-    RF231_SELClr();
-
-    /* Send command byte and address */
-    SPI1_Write(RF231_CMD_SRAM_WRITE);
-    SPI1_Read();
-    SPI1_Write(addr);
-    SPI1_Read();
-    
-    /* Write data */
-    while(len--) {
-        SPI1_Write(*data++);
+        /* Send command byte and address */
+        SPI1_Write(RF231_CMD_SRAM_WRITE);
         SPI1_Read();
-    }
+        SPI1_Write(addr);
+        SPI1_Read();
 
-    RF231_SELSet(); 
+        /* Write data */
+        while (len--)
+        {
+            SPI1_Write(*data++);
+            SPI1_Read();
+        }
+
+        RF231_SELSet();
+        give();
+    }
+    else
+    {
+        // invalid data -- do nothing
+    }
+    return;
 }
 
 /* Read Frame buffer with random access */
 void ReadSRAM(uint8_t addr, uint8_t *data, uint8_t len) {
     /* Check the address and length */
-    if(addr + len > 0x7F) {
-        return;
-    }
-
+    if (addr + len <= 0x7F)
+    {
+        /*
 	if (RF231_GetSEL() == 0)
 	{
 		log_error("Radio being accessed by others");
 		return;
 	}
+*/
+        take();
+        RF231_SELClr();
 
-    RF231_SELClr();
+        /* Send command byte and address */
+        SPI1_Write(RF231_CMD_SRAM_READ);
+        SPI1_Read();
+        SPI1_Write(addr);
+        SPI1_Read();
 
-    /* Send command byte and address */
-    SPI1_Write(RF231_CMD_SRAM_READ);
-    SPI1_Read();
-    SPI1_Write(addr);
-    SPI1_Read();
+        /* Read data */
+        while (len--)
+        {
+            SPI1_Write(0);
+            *data++ = SPI1_Read();
+        }
 
-    /* Read data */
-    while(len--) {
-        SPI1_Write(0);
-        *data++ = SPI1_Read();
+        RF231_SELSet();
+        give();
     }
-
-    RF231_SELSet();
+    return;
 }

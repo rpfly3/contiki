@@ -23,7 +23,6 @@ process_event_t control_signaling;
 /*-------------------------------------------------------------------------------*/
 static void rf231_reset();
 static void rf231_rx_on();
-static void TXAretConfig();
 static void SetCCAMode(uint8_t cca);
 static void SetEDThreshold(uint8_t interrupt);
 void SetInterrupt(uint8_t interrupt);
@@ -39,7 +38,6 @@ void rf231_init(void) {
 	rf231_reset();
 
 	// Configuration for CCA
-	TXAretConfig();
 	SetCCAMode(RF231_CCA_2);
 	SetEDThreshold(DEFAULT_CCA_THRES);
 
@@ -115,7 +113,7 @@ void start_rx()
 	uint8_t new_status, original_status = RF231_GetStatus();
 	if (original_status == RF231_TRX_STATUS__RX_ON || original_status == RF231_TRX_STATUS__BUSY_RX)
 	{
-		return;
+		// already in rx status
 	}
 	else if (original_status != RF231_TRX_STATUS__PLL_ON && 
 		original_status != RF231_TRX_STATUS__BUSY_TX &&
@@ -123,15 +121,19 @@ void start_rx()
 		original_status != RF231_TRX_STATUS__BUSY_TX_ARET)
 	{
 		log_error("Wrong status %u", original_status);
-		return;
 	}
-	RF231_StateCtrl(RF231_TRX_STATE__RX_ON);
-	delay_us(tTR8);
-
-	do
+	else
 	{
-		new_status = RF231_GetStatus();
-	} while (new_status != RF231_TRX_STATUS__RX_ON);
+
+		RF231_StateCtrl(RF231_TRX_STATE__RX_ON);
+		delay_us(tTR8);
+
+		do
+		{
+			new_status = RF231_GetStatus();
+		} while (new_status != RF231_TRX_STATUS__RX_ON);
+	}
+	return;
 }
 
 // Transit state from RX_ON to PLL_ON and be ready for transmission
@@ -141,67 +143,30 @@ void start_tx()
 	uint8_t new_status, original_status = RF231_GetStatus();
 	if (original_status == RF231_TRX_STATUS__PLL_ON || original_status == RF231_TRX_STATUS__BUSY_TX)
 	{
-		return;
+		// already in tx status
 	}
 	else if (original_status != RF231_TRX_STATUS__RX_ON && original_status != RF231_TRX_STATUS__BUSY_RX)
 	{
 		log_error("Wrong status %u", original_status);
-		return;
 	}
-	RF231_StateCtrl(RF231_TRX_STATE__FORCE_PLL_ON);
-	delay_us(tTR9);
-
-	do
+	else
 	{
-		new_status = RF231_GetStatus();
-	} while (new_status != RF231_TRX_STATUS__PLL_ON);
-}
+		RF231_StateCtrl(RF231_TRX_STATE__FORCE_PLL_ON);
+		delay_us(tTR9);
 
-// Transit state from RX_ON to TX_ARET_ON and be ready for CSMA transmission
-void start_tx_aret()
-{
-	uint8_t new_status, original_status = RF231_GetStatus();
-
-	if (original_status == RF231_TRX_STATUS__TX_ARET_ON || original_status == RF231_TRX_STATUS__BUSY_TX_ARET)
-	{
-		return;
+		do
+		{
+			new_status = RF231_GetStatus();
+		} while (new_status != RF231_TRX_STATUS__PLL_ON);
 	}
-	else if (original_status != RF231_TRX_STATUS__RX_ON && original_status != RF231_TRX_STATUS__BUSY_RX)
-	{
-		log_error("Wrong status %u", original_status);
-		return;
-	}
-
-	// From RX_ON to PLL_ON
-	RF231_StateCtrl(RF231_TRX_STATE__FORCE_PLL_ON);
-	delay_us(tTR9);
-	
-	do
-	{
-		new_status = RF231_GetStatus();
-	} while (new_status != RF231_TRX_STATUS__PLL_ON);
-
-	// From PLL_ON to TX_ARET_ON
-	RF231_StateCtrl(RF231_TRX_STATE__TX_ARET_ON);
-	delay_us(tTR8);
-
-	do
-	{
-		new_status = RF231_GetStatus();
-	} while (new_status != RF231_TRX_STATUS__TX_ARET_ON);
+	return;
 }
 
 /*==================== Radio State Check =================== */
 static bool is_sleeping()
 {
-	if (RF231_GetSLP_TR() != 0)
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
+	bool sleeping = !RF231_GetSLP_TR();
+	return sleeping;
 }
 
 static bool is_busy()
@@ -216,16 +181,6 @@ static bool is_busy()
 
 /*================= Radio State Configuration ============= */
 
-void TXAretConfig()
-{
-	/* MAX_FRAME_RETRIES -- 0, MAX_CSMA_RETRIES -- 0, SLOTTED_OPERATION -- 0 */
-	WriteRegister(RF231_XAH_CTRL_0, 0x0A);
-	WriteRegister(RF231_CSMA_SEED_0, node_addr);
-	WriteRegister(RF231_CSMA_SEED_1, 0x40);
-	/* MAX_BE -- 0, MIN_BE -- 0 */
-	WriteRegister(RF231_CSMA_BE, 0x80);
-}
-
 uint8_t GetPower()
 {
 	uint8_t power = ReadRegister(RF231_PHY_TX_PWR);
@@ -235,27 +190,34 @@ uint8_t GetPower()
 
 void SetPower(uint8_t power)
 {
-	uint8_t Reg, original_power;
 	if (power > RF231_TX_PWR_MIN) 
 	{
 		log_error("Invalid power argument");
-	    return;
-    }
-    Reg = ReadRegister(RF231_PHY_TX_PWR);
-	original_power = Reg & 0x0F;
-	if (original_power == power)
-	{
-		return;
 	}
-
-    Reg &= 0xF0;
-    Reg |= power;
-    WriteRegister(RF231_PHY_TX_PWR, Reg); 
-
-	if (GetPower() != power)
+	else
 	{
-		log_error("Power not set");
+		uint8_t Reg = ReadRegister(RF231_PHY_TX_PWR);
+		uint8_t original_power = Reg & 0x0F;
+		if (original_power != power)
+		{
+			Reg &= 0xF0;
+			Reg |= power;
+			WriteRegister(RF231_PHY_TX_PWR, Reg);
+			if (GetPower() != power)
+			{
+				log_error("Power not set");
+			}
+			else
+			{
+				// do nothing
+			}
+		}
+		else
+		{
+			// target power set
+		}
 	}
+	return;
 }
 
 uint8_t GetChannel()
@@ -272,30 +234,43 @@ void SetChannel(uint8_t channel)
 	if (channel < RF231_CHANNEL_MIN || channel > RF231_CHANNEL_MAX)
 	{
 		log_error("Invalid channel argument");
-		return;
 	}
-    Reg = ReadRegister(RF231_PHY_CC_CCA); 
-	original_channel = Reg & 0x1F;
-
-	if (original_channel == channel)
+	else
 	{
-		return;
-	}
+		Reg = ReadRegister(RF231_PHY_CC_CCA);
+		original_channel = Reg & 0x1F;
 
-    Reg &= 0xE0;
-    Reg |= channel;
-    WriteRegister(RF231_PHY_CC_CCA, Reg);
+		if (original_channel != channel)
+		{
+			Reg &= 0xE0;
+			Reg |= channel;
+			WriteRegister(RF231_PHY_CC_CCA, Reg);
 
-	uint8_t status = RF231_GetStatus();
-	if (status == RF231_TRX_STATUS__RX_ON || status == RF231_TRX_STATUS__PLL_ON || status == RF231_TRX_STATUS__TX_ARET_ON || status == RF231_TRX_STATUS__RX_AACK_ON)
-	{
-		delay_us(tTR20);
-	}
+			uint8_t status = RF231_GetStatus();
+			if (status == RF231_TRX_STATUS__RX_ON || status == RF231_TRX_STATUS__PLL_ON || status == RF231_TRX_STATUS__TX_ARET_ON || status == RF231_TRX_STATUS__RX_AACK_ON)
+			{
+				delay_us(tTR20);
+			}
+			else
+			{
+				// do nothing
+			}
 
-	if (GetChannel() != channel)
-	{
-		log_error("Channel not set");
+			if (GetChannel() != channel)
+			{
+				log_error("Channel not set");
+			}
+			else
+			{
+				// channel is set
+			}
+		}
+		else
+		{
+			// in target channel
+		}
 	}
+	return;
 }
 
 uint8_t GetRxSensitivity()
@@ -304,28 +279,39 @@ uint8_t GetRxSensitivity()
 	rxthres &= 0x0F;
 	return rxthres;
 }
+
 void SetRxSensitivity(uint8_t rxthres)
 {
 	uint8_t Reg, original_rxthres;
 	if (rxthres > 0x0F)
 	{
 		log_error("Invalid RX sensitivity argument");
-		return;
 	}
-	Reg = ReadRegister(RF231_PHY_RX_SYN); 
-	original_rxthres = Reg & 0x0F;
+	else
+	{
+		Reg = ReadRegister(RF231_PHY_RX_SYN);
+		original_rxthres = Reg & 0x0F;
 
-	if (original_rxthres == rxthres)
-	{
-		return;
-	}	
-	Reg &= 0xF0;
-	Reg |= rxthres;
-	WriteRegister(RF231_PHY_RX_SYN, Reg);
-	if (GetRxSensitivity() != rxthres)
-	{
-		log_error("Rx sensitivity not set");
+		if (original_rxthres != rxthres)
+		{
+			Reg &= 0xF0;
+			Reg |= rxthres;
+			WriteRegister(RF231_PHY_RX_SYN, Reg);
+			if (GetRxSensitivity() != rxthres)
+			{
+				log_error("Rx sensitivity not set");
+			}
+			else
+			{
+				// do nothing
+			}
+		}
+		else
+		{
+			// with target rx sensitivity
+		}
 	}
+	return;
 }
 
 bool GetAutoTXCRC()
@@ -395,21 +381,29 @@ void SetEDThreshold(uint8_t threshold)
 	if (threshold > 0x0F)
 	{
 		log_error("Invalid ED threshold argument");
-		return;
 	}
-	uint8_t Reg, original_thres;
-	Reg = ReadRegister(RF231_PHY_CCA_THRES);
-	original_thres = Reg & 0x0F;
-	if (original_thres == threshold)
+	else
 	{
-		return;
-	}
-	Reg &= 0xC0;
-	Reg |= threshold;
-	WriteRegister(RF231_PHY_CCA_THRES, Reg);
-	if (GetEDThreshold() != threshold)
-	{
-		log_error("ED threshold not set");
+		uint8_t Reg = ReadRegister(RF231_PHY_CCA_THRES);
+		uint8_t original_thres = Reg & 0x0F;
+		if (original_thres != threshold)
+		{
+			Reg &= 0xC0;
+			Reg |= threshold;
+			WriteRegister(RF231_PHY_CCA_THRES, Reg);
+			if (GetEDThreshold() != threshold)
+			{
+				log_error("ED threshold not set");
+			}
+			else
+			{
+				// do nothing
+			}
+		}
+		else
+		{
+			// with target ED threshold
+		}
 	}
 }
 
@@ -425,54 +419,38 @@ void SetCCAMode(uint8_t CCA)
 	if (CCA != RF231_CCA_0 && CCA != RF231_CCA_1 && CCA != RF231_CCA_2 && CCA != RF231_CCA_3)
 	{
 		log_error("Invalid CCA argument");
-		return;
 	}
-	uint8_t Reg, original_mode;
-	Reg= ReadRegister(RF231_PHY_CC_CCA);
-	original_mode = Reg & 0x60;
-	if (original_mode == CCA)
+	else
 	{
-		return;
+		uint8_t Reg, original_mode;
+		Reg = ReadRegister(RF231_PHY_CC_CCA);
+		original_mode = Reg & 0x60;
+		if (original_mode != CCA)
+		{
+			Reg &= 0x1F;
+			Reg |= CCA;
+			WriteRegister(RF231_PHY_CC_CCA, Reg);
+			if (GetCCAMode() != CCA)
+			{
+				log_error("CCA mode not set");
+			}
+			else
+			{
+				// do nothing
+			}
+		}
+		else
+		{
+			// already set	
+		}
 	}
-	Reg &= 0x1F;
-	Reg |= CCA;
-	WriteRegister(RF231_PHY_CC_CCA, Reg);
-	if (GetCCAMode() != CCA)
-	{
-		log_error("CCA mode not set");
-	}
+	return;
 }
 
 void InitCCARequest()
 {
 	uint8_t Reg = ReadRegister(RF231_PHY_CC_CCA);
 	WriteRegister(RF231_PHY_CC_CCA, 0x80 | Reg);
-}
-
-/**
-   @brief Returns a random number, composed of bits from the radio's
-   random number generator.  Note that the radio must be in a receive
-   mode for this to work, otherwise the library rand() function is
-   used.
- */
-uint8_t GetRand()
-{
-	uint8_t rand_val, val = 0;
-	uint8_t status = RF231_GetStatus();
-	if (status == RF231_TRX_STATUS__RX_ON || status == RF231_TRX_STATUS__RX_AACK_ON)
-	{
-		for (uint8_t i = 0; i < 4; ++i)
-		{
-			rand_val = ReadRegister(RF231_PHY_RSSI);
-			rand_val &= 0x60;
-			val = (val << 2) | rand_val;	
-		}
-		return val;
-	}
-	else
-	{
-		return rand();
-	}
 }
 
 uint8_t GetInterrupt()
@@ -487,6 +465,10 @@ void SetInterrupt(uint8_t interrupt)
 	if (ReadRegister(RF231_IRQ_MASK) != interrupt)
 	{
 		log_error("Interrupt not set");
+	}
+	else
+	{
+		// do nothing
 	}
 }
 
@@ -596,10 +578,6 @@ void flush_rx_buffer()
 	rf231_rx_buffer_head = (rf231_rx_buffer_head + 1) % RF231_CONF_RX_BUFFERS;
 }
 
-void rf231_receive()
-{
-}
-
 /* Perform a CCA to find out if there is a packet in the air or not*/
 uint8_t getCCA(uint8_t CCA, uint8_t threshold) 
 {
@@ -644,141 +622,72 @@ void rf231_send()
 	RF231_SLP_TRClr();
 }
 
-void rf231_csma_send()
-{
-	start_tx_aret();
-
-	if (RF231_GetStatus() != RF231_TRX_STATUS__TX_ARET_ON)
-	{
-		log_error("Not in correct status");
-		return;
-	}
-	WriteFrame(rf231_tx_buffer, rf231_tx_buffer_size);
-	RF231_SLP_TRSet();
-	RF231_SLP_TRClr();
-}
-
-uint8_t ED;
+// only change the radio status in one place
+// only read radio register in ISR
+uint8_t ED_sample;
+uint8_t interrupt_source;
+uint8_t radio_status;
+rtimer_clock_t rx_start_time;
 void EXTI1_IRQHandler(void)
 {			
 	if (EXTI_GetITStatus(EXTI_Line1) != RESET) 
 	{
 		EXTI_ClearITPendingBit(EXTI_Line1);
-		if (node_addr == BASE_STATION_ID)
+		interrupt_source = ReadRegister(RF231_IRQ_STATUS);
+		if (interrupt_source & RF231_RX_START_MASK)
 		{
-			// do nothing
+			rx_start_time = RTIMER_NOW();
+			ED_sample = GetED();
 		}
-		else
+		if (interrupt_source & RF231_TRX_END_MASK)
 		{
-			ED = GetED();
-			process_poll(&irq_clear_process);
-		}
-	}
-}
-
-process_event_t packet_in_buffer;
-
-PROCESS_THREAD(irq_clear_process, ev, data)
-{
-	PROCESS_BEGIN();
-	while (1)
-	{
-		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
-
-		uint8_t interrupt_status = ReadRegister(RF231_IRQ_STATUS);
-
-		// Check if the receiver buffer is full 
-		if (rf231_rx_buffer_head == (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS)
-		{
-			log_error("Radio reception buffer is full");
-		}
-		else
-		{
-			if (interrupt_status & RF231_RX_START_MASK)
+			radio_status = RF231_GetStatus();
+			if (radio_status == RF231_TRX_STATUS__RX_ON ||
+				radio_status == RF231_TRX_STATUS__BUSY_RX)
 			{
-				rf231_rx_buffer[rf231_rx_buffer_tail].tx_ed = ED;
-			}
-			else if (interrupt_status & RF231_TRX_END_MASK)
-			{
-				uint8_t radio_status = RF231_GetStatus();	
-				if (radio_status == RF231_TRX_STATUS__RX_ON)
+				if (is_crc_valid())
 				{
-					if (is_crc_valid())
+					ReadFrame(&rf231_rx_buffer[rf231_rx_buffer_tail]);
+					if(rf231_rx_buffer[rf231_rx_buffer_tail].length)
 					{
-						ReadFrame(&rf231_rx_buffer[rf231_rx_buffer_tail]);	
-
-						// If the packet length is not correct, then discard it
-						if (rf231_rx_buffer[rf231_rx_buffer_tail].length <= RF231_MAX_FRAME_LENGTH - 2 && rf231_rx_buffer[rf231_rx_buffer_tail].length >= RF231_MIN_FRAME_LENGTH) 
+						rf231_rx_buffer[rf231_rx_buffer_tail].tx_ed = ED_sample;
+						rf231_rx_buffer[rf231_rx_buffer_tail].time_stamp = rx_start_time;
+						rf231_rx_buffer[rf231_rx_buffer_tail].noise_ed = GetED();
+						// Check if the receiver buffer is full
+						if (rf231_rx_buffer_head == (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS)
 						{
-	  
-							uint8_t *buf_ptr = rf231_rx_buffer[rf231_rx_buffer_tail].data;
-							uint8_t data_type;
-
-							buf_ptr += FCF;
-							memcpy(&data_type, buf_ptr, sizeof(uint8_t));
-							buf_ptr += sizeof(uint8_t);
-
-							// Handle TIME_SYNCH_BEACON immediately
-							if (data_type == TIME_SYNCH_BEACON && rf231_rx_buffer[rf231_rx_buffer_tail].length == TIME_SYNCH_BEACON_LENGTH + 1)
-							{
-								rtimer_clock_t network_time;
-								memcpy(&network_time, buf_ptr, sizeof(rtimer_clock_t));
-								buf_ptr += sizeof(rtimer_clock_t);
-								uint16_t time_synch_seq_no;
-								memcpy(&time_synch_seq_no, buf_ptr, sizeof(uint16_t));
-								buf_ptr += sizeof(uint16_t);
-								
-								rtimer_clock_t adjust_time = RTIMER_NOW();
-								// synchronize time and reschedule
-								network_time_set(network_time);
-								current_slot_start = network_time - (network_time % PRKMCS_TIMESLOT_LENGTH);
-								ASN_INIT(current_asn, 0, network_time / PRKMCS_TIMESLOT_LENGTH);
-
-								// Consecutively processing five packets to make sure motes are synchronized
-								if (time_synch_seq_no >= 5)
-								{
-									prkmcs_is_synchronized = 1;
-								}
-
-								printf("Received TS: %u at time %lu\r\n", time_synch_seq_no, adjust_time);
-
-								schedule_next_slot(&slot_operation_timer);
-							}
-							else if (data_type == TEST_PACKET || data_type == CONTROL_PACKET || data_type == DATA_PACKET)
-							{
-								rf231_rx_buffer[rf231_rx_buffer_tail].noise_ed = 0;
-								rf231_rx_buffer_tail = (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS;
-								process_post(&rx_process, packet_in_buffer, NULL);
-							}
-						} 
-						else
-						{
-							// invalid packet -- do nothing
+							log_error("A packet is dropped");
 						}
+
+						rf231_rx_buffer_tail = (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS;
+						process_poll(&rx_process);
 					}
 					else
 					{
 						// invalid packet -- do nothing
 					}
 				}
-				else if (radio_status == RF231_TRX_STATUS__PLL_ON || radio_status == RF231_TRX_STATUS__TX_ARET_ON)
-				{
-					start_rx();
-				}
 				else
 				{
-					// do nothing
+					// invalid packet -- do nothing
 				}
 			}
-			else if (interrupt_status & RF231_CCA_ED_DONE_MASK)
+			else if(radio_status == RF231_TRX_STATUS__PLL_ON ||
+					radio_status == RF231_TRX_STATUS__BUSY_TX)
 			{
-				// do nothing
-			}
-			else
-			{
-				// do nothing
+				start_rx();
 			}
 		}
+	}
+}
+
+process_event_t packet_in_buffer;
+PROCESS_THREAD(irq_clear_process, ev, data)
+{
+	PROCESS_BEGIN();
+	while (1)
+	{
+		PROCESS_YIELD_UNTIL(ev == packet_in_buffer);
 	}
 	PROCESS_END();
 }
@@ -788,19 +697,55 @@ PROCESS_THREAD(rx_process, ev, data)
 	PROCESS_BEGIN();
 	while (1)
 	{
-		PROCESS_YIELD_UNTIL(ev == packet_in_buffer);
 
+		PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
 		if (rf231_rx_buffer_head == rf231_rx_buffer_tail)
 		{
 			log_error("Radio reception buffer is empty");
 		}
 		else
 		{
+			uint8_t *buf_ptr = rf231_rx_buffer[rf231_rx_buffer_head].data;
+			uint8_t length = rf231_rx_buffer[rf231_rx_buffer_tail].length;
+			uint8_t data_type;
 
-#ifdef PRKMCS_ENABLE
-			prkmcs_receive();
-#endif // PRKMCS_ENABLE		
+			buf_ptr += FCF;
+			memcpy(&data_type, buf_ptr, sizeof(uint8_t));
+			buf_ptr += sizeof(uint8_t);
 
+			// Handle TIME_SYNCH_BEACON immediately
+			if (data_type == TIME_SYNCH_BEACON && length == TIME_SYNCH_BEACON_LENGTH + 1)
+			{
+				rtimer_clock_t network_time;
+				memcpy(&network_time, buf_ptr, sizeof(rtimer_clock_t));
+				buf_ptr += sizeof(rtimer_clock_t);
+				uint16_t time_synch_seq_no;
+				memcpy(&time_synch_seq_no, buf_ptr, sizeof(uint16_t));
+				buf_ptr += sizeof(uint16_t);
+
+				network_time = RTIMER_NOW() + network_time - rf231_rx_buffer[rf231_rx_buffer_head].time_stamp;
+				// synchronize time and reschedule
+				network_time_set(network_time);
+				current_slot_start = network_time - (network_time % PRKMCS_TIMESLOT_LENGTH);
+				ASN_INIT(current_asn, 0, network_time / PRKMCS_TIMESLOT_LENGTH);
+
+				// Consecutively processing five packets to make sure motes are synchronized
+				if (time_synch_seq_no >= 5)
+				{
+					prkmcs_is_synchronized = 1;
+				}
+
+				printf("Received TS: %u at time %lu\r\n", time_synch_seq_no, rf231_rx_buffer[rf231_rx_buffer_head].time_stamp);
+
+				schedule_next_slot(&slot_operation_timer);
+			}
+			else if (data_type == TEST_PACKET || data_type == CONTROL_PACKET || data_type == DATA_PACKET)
+			{
+				#ifdef PRKMCS_ENABLE
+				prkmcs_receive();
+				#endif // PRKMCS_ENABLE
+
+			}
 			flush_rx_buffer();
 		}
 	}
