@@ -60,43 +60,7 @@ void initLocalLinkERTable()
 	return;
 }
 
-/* find the local_link_er_index in local link er table according to active link index */
-uint8_t findLocalLinkERTableIndex(uint8_t index) {
-
-	uint8_t local_link_er_index = INVALID_INDEX;
-    for(uint8_t i = 0; i < local_link_er_size; i++) 
-    {
-	    if (localLinkERTable[i].link_index == index) 
-	    {
-		    local_link_er_index = i;
-		    break;
-        }
-    }
-    return local_link_er_index;
-}
-
-/*************************** Controller ******************************/
-
-/* compute the delta I for link with @sender; note that this task is executed only by receiver */
-float pdr2DeltaIdB(uint8_t pdr_index, uint8_t local_link_er_index) 
-{
-	float slope_inv, deltaI_dB;
-	uint8_t link_pdr = pdrTable[pdr_index].pdr, link_pdr_sample = pdrTable[pdr_index].pdr_sample, link_pdr_req = localLinkERTable[local_link_er_index].pdr_req;
-	
-	if (abs(link_pdr - link_pdr_req) > E_0)
-	{
-		slope_inv = (PDR_INV_TABLE[link_pdr_req] - PDR_INV_TABLE[link_pdr]) / (link_pdr_req - link_pdr);
-	}
-	else
-	{
-		slope_inv = PDR_SLOPE_TABLE[link_pdr];
-	}
-	
-	deltaI_dB = (ALPHA * link_pdr + (1 - ALPHA) * link_pdr_sample - link_pdr_req) * slope_inv / 100;
-	return deltaI_dB;
-}
-
-// initialize maximum local ER with existing signal map info
+// initialize maximum local ER with existing signal map info make this entry valid
 void initLocalLinkER(uint8_t local_link_er_index)
 {
 	if (valid_sm_entry_size != 0)
@@ -118,6 +82,51 @@ void initLocalLinkER(uint8_t local_link_er_index)
 	}
 
 	return;
+}
+
+/* find the local_link_er_index in local link er table according to active link index */
+uint8_t findLocalLinkERTableIndex(uint8_t index) {
+
+	uint8_t local_link_er_index = INVALID_INDEX;
+    for(uint8_t i = 0; i < local_link_er_size; i++) 
+    {
+	    if (localLinkERTable[i].link_index == index) 
+	    {
+		    local_link_er_index = i;
+		    break;
+        }
+    }
+    return local_link_er_index;
+}
+
+/*************************** Controller ******************************/
+/* controller module initialization */
+void initController() 
+{
+	local_link_er_size = 0;
+	local_er_sending_index = 0;
+	initLocalLinkERTable();
+}
+
+/* compute the delta I for link with @sender; note that this task is executed only by receiver */
+float pdr2DeltaIdB(uint8_t pdr_index, uint8_t local_link_er_index) 
+{
+	float slope_inv;
+	uint8_t link_pdr = pdrTable[pdr_index].pdr;
+	uint8_t link_pdr_sample = pdrTable[pdr_index].pdr_sample;
+	uint8_t link_pdr_req = localLinkERTable[local_link_er_index].pdr_req;
+	
+	if (abs(link_pdr - link_pdr_req) > E_0)
+	{
+		slope_inv = (PDR_INV_TABLE[link_pdr_req] - PDR_INV_TABLE[link_pdr]) / (link_pdr_req - link_pdr);
+	}
+	else
+	{
+		slope_inv = PDR_SLOPE_TABLE[link_pdr];
+	}
+	
+	float deltaI_dB = (ALPHA * link_pdr + (1 - ALPHA) * link_pdr_sample - link_pdr_req) * slope_inv / 100;
+	return deltaI_dB;
 }
 
 /* receiver update ER by computing \delta I */
@@ -193,14 +202,6 @@ void updateLocalER(uint8_t local_link_er_index, uint16_t er_version, uint8_t I_e
 	{
 		// do nothing
 	}
-}
-
-/* controller module initialization */
-void initController() 
-{
-	local_link_er_size = 0;
-	local_er_sending_index = 0;
-	initLocalLinkERTable();
 }
 
 /* prepare local ER info for sending */
