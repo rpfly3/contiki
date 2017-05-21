@@ -45,7 +45,6 @@ typedef struct {
 	uint8_t data[RF231_MAX_FRAME_LENGTH];	//--> PSDU data
 	uint8_t tx_ed; //received energy in transmission
 	uint8_t noise_ed; //received energy without transmission
-	uint32_t time_stamp; // time stamp of packet reception
 } rx_frame_t;
 
 /*========Functions declartions for the ones defined in radio.c========*/

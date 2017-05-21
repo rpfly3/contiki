@@ -127,6 +127,7 @@ void showSM()
 }
 
 //Transceiving motes' slot operation
+uint8_t node_index;
 static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 {		
 	if (prkmcs_is_synchronized)
@@ -141,29 +142,26 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 			{
 				start_rx();
 			}
-			/*
 			else if (duty_cicle == 1)
 			{
-				uint8_t node_index = (((current_asn.ls4b / TIME_SYNCH_FREQUENCY) + 1) * 2 - 2) % activeNodesSize;				
+				node_index = ((current_asn.ls4b / TIME_SYNCH_FREQUENCY) * 4 + 0) % activeNodesSize;				
 				signalmap_signaling(node_index);
 			}
 			else if (duty_cicle == 2)
 			{
-				uint8_t node_index = (((current_asn.ls4b / TIME_SYNCH_FREQUENCY) + 1) * 2 - 2) % activeNodesSize;				
+				node_index = ((current_asn.ls4b / TIME_SYNCH_FREQUENCY) * 4 + 1) % activeNodesSize;				
 				signalmap_signaling(node_index);	
 			}
 			else if (duty_cicle == 3)
 			{
-				uint8_t node_index = (((current_asn.ls4b / TIME_SYNCH_FREQUENCY) + 1) * 2 - 1) % activeNodesSize;				
+				node_index = ((current_asn.ls4b / TIME_SYNCH_FREQUENCY) * 4 + 2) % activeNodesSize;				
 				signalmap_signaling(node_index);
 			}
 			else if (duty_cicle == 4)
 			{
-				uint8_t node_index = (((current_asn.ls4b / TIME_SYNCH_FREQUENCY) + 1) * 2 - 1) % activeNodesSize;				
+				node_index = ((current_asn.ls4b / TIME_SYNCH_FREQUENCY) * 4 + 3) % activeNodesSize;				
 				signalmap_signaling(node_index);	
 			}
-			*/
-		
 		}
   /*
 		else if (current_asn.ls4b == BUILD_SIGNALMAP_PERIOD + 1)

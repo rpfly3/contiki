@@ -39,8 +39,7 @@ enum
 /* the unit is us because the rtimer graduality is us */
 enum
 {	
-	BUILD_SIGNALMAP_PERIOD = 10000,
-	SLOT_GUARD = 2,
+	BUILD_SIGNALMAP_PERIOD = 5000,
 	PRKMCS_TIMESLOT_LENGTH = 20000,
 };
 
