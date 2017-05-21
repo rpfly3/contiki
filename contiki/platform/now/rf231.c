@@ -658,8 +658,11 @@ void EXTI1_IRQHandler(void)
 						{
 							log_error("A packet is dropped");
 						}
+						else
+						{
+							rf231_rx_buffer_tail = (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS;
+						}
 
-						rf231_rx_buffer_tail = (rf231_rx_buffer_tail + 1) % RF231_CONF_RX_BUFFERS;
 						process_poll(&rx_process);
 					}
 					else

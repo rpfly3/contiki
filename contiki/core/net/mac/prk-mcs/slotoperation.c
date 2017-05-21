@@ -141,6 +141,7 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 			{
 				start_rx();
 			}
+			/*
 			else if (duty_cicle == 1)
 			{
 				uint8_t node_index = (((current_asn.ls4b / TIME_SYNCH_FREQUENCY) + 1) * 2 - 2) % activeNodesSize;				
@@ -161,6 +162,7 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 				uint8_t node_index = (((current_asn.ls4b / TIME_SYNCH_FREQUENCY) + 1) * 2 - 1) % activeNodesSize;				
 				signalmap_signaling(node_index);	
 			}
+			*/
 		
 		}
   /*
