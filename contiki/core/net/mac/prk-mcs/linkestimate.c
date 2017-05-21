@@ -76,9 +76,19 @@ void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, uint8_t rx_ed)
 		    pdrTable[pdr_index].sent_pkt += (sequence_num - pdrTable[pdr_index].sequence_num);
 		    pdrTable[pdr_index].received_pkt += 1;
 		    pdrTable[pdr_index].sequence_num = sequence_num;
-		    float rx_IdBm = ed2dBm(rx_ed);
+
+			// compute inbound_gain (dB) which is obtained with max power
 		    uint8_t inbound_ed = getInboundED(sender);
 		    float rx_dBm = ed2dBm(inbound_ed);
+			float inbound_gain = powerLevel2dBm(RF231_TX_PWR_MAX) - rx_dBm;
+
+			// compute P (dBm)
+			rx_dBm = powerLevel2dBm(RF231_TX_PWR_MIN) - inbound_gain;
+			
+			// compute P + I (dBm)
+		    float rx_IdBm = ed2dBm(rx_ed);
+
+			// compute I (mW)
 		    float nb_ImW = dbm2mW(rx_IdBm) - dbm2mW(rx_dBm);
 		    if (nb_ImW <= 0)
 		    {

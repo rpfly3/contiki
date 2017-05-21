@@ -153,7 +153,7 @@ enum
 #define RF231_CONF_RX_BUFFERS 100
 #endif
 
-#define DEFAULT_INTERRUPTS (RF231_TRX_END_MASK | RF231_RX_START_MASK | RF231_CCA_ED_DONE_MASK)
+#define DEFAULT_INTERRUPTS (RF231_TRX_END_MASK)
 #define DEFAULT_CCA_THRES 0
 #define FCF 1
 
@@ -178,17 +178,13 @@ static inline void RF231_StateCtrl(uint8_t cmd)
 
 void rf231_init();
 void start_tx();
-void start_tx_aret();
 void start_rx();
-void SetTrxStatus(uint8_t new_status);
 void rf231_send();
-void rf231_csma_send();
 
 void flush_rx_buffer();
 void SetPower(uint8_t power);
 void SetChannel(uint8_t channel);
 uint8_t getCCA(uint8_t CCA, uint8_t threshold);
-uint8_t GetRand();
 void rf231_set_interrupt(uint8_t interrupt);
 
 void InitED();

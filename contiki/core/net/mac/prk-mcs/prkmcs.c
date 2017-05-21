@@ -215,7 +215,7 @@ void prkmcs_receive()
 		memcpy(&num_er, buf_ptr, sizeof(uint8_t));
 		buf_ptr += sizeof(uint8_t);
 		
-		printf("Received Control %u from %u\r\n", packet_seq_no, sender);
+		printf("Received Control %u from %u: rx ed %u\r\n", packet_seq_no, sender, rx_ed);
 
 		for (uint8_t i = 0; i < num_er; ++i)
 		{

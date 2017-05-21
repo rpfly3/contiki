@@ -101,42 +101,6 @@ void WriteFrame(uint8_t *WriteBuffer, uint8_t length)
     RF231_SELSet();
 }
 
-uint8_t GetFrame(uint8_t *ReadBuffer)
-{
-	if (RF231_GetSEL() == 0)
-	{
-		log_error("Radio being accessed by others");
-		return 0;
-	}
-
-    uint8_t FrameLength, RxLength = 0;
-
-    RF231_SELClr();
-    SPI1_Write(RF231_CMD_FRAME_READ);
-    SPI1_Read();
-
-    SPI1_Write(0);
-    SPI1_Read();
-
-    SPI1_Write(0);
-    FrameLength = SPI1_Read();
-    while(RxLength < FrameLength)
-    {
-        SPI1_Write(0);
-        *ReadBuffer++ = SPI1_Read();
-        RxLength++;
-    }
-
-    SPI1_Write(0);
-    //LQI
-    SPI1_Read();
-
-    RF231_SELSet();
-
-    return FrameLength;
-}
-
-
 void ReadFrame(rx_frame_t *ReadBuffer)
 {
 	if (RF231_GetSEL() == 0)
@@ -160,7 +124,6 @@ void ReadFrame(rx_frame_t *ReadBuffer)
     if((FrameLength < RF231_MIN_FRAME_LENGTH) || (FrameLength > RF231_MAX_FRAME_LENGTH)) {
         /* Length test fail and set the corresponding field*/
         ReadBuffer->length = 0;
-        ReadBuffer->lqi = 0;
 	    RF231_SELSet();
         return; 
     }
@@ -185,9 +148,9 @@ void ReadFrame(rx_frame_t *ReadBuffer)
 		SPI1_Read();
 	}
 
-    /* Get LQI info */
+    /* Discard LQI info */
     SPI1_Write(0);
-    ReadBuffer->lqi = SPI1_Read();
+    SPI1_Read();
 
     /* End read */
     RF231_SELSet();

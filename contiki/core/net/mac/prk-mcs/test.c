@@ -59,20 +59,12 @@ void test_receive(uint8_t *ptr)
 	memcpy(&num_entry, ptr, sizeof(uint8_t));
 	ptr += sizeof(uint8_t);
 
-	if (sequence_no % 2 == 1)
+	printf("Received Test %u from %u: R-ED %u\r\n", sequence_no, sender, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed);
+	// Compute inbound gain only when EDs are valid
+	if ((rf231_rx_buffer[rf231_rx_buffer_head].tx_ed != INVALID_ED) && (rf231_rx_buffer[rf231_rx_buffer_head].tx_ed >= 0))
 	{
-		printf("Received Test %u from %u: R-ED %u N-ED %u\r\n", sequence_no, sender, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed, rf231_rx_buffer[rf231_rx_buffer_head].noise_ed);
-		// Compute inbound gain only when EDs are valid
-		if ((rf231_rx_buffer[rf231_rx_buffer_head].tx_ed != INVALID_ED) && (rf231_rx_buffer[rf231_rx_buffer_head].noise_ed != INVALID_ED)
-			&& (rf231_rx_buffer[rf231_rx_buffer_head].tx_ed >= 0))
-		{
 			
-			updateInboundED(sender, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed);
-		}
-		else
-		{
-			// do nothing
-		}
+		updateInboundED(sender, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed);
 	}
 	else
 	{

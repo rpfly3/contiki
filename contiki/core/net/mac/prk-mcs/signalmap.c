@@ -132,9 +132,15 @@ void updateInboundED(linkaddr_t sender, uint8_t inbound_ed)
 	if (sm_index != INVALID_INDEX) 
 	{
 		signal = &signalMap[sm_index];
-		signal->inbound_ed = inbound_ed;
-   
-		 // Resort the signal map
+		if (signal->inbound_ed != INVALID_ED)
+		{
+			signal->inbound_ed = signal->inbound_ed * (1 - ALPHA) + inbound_ed * ALPHA;
+		}
+		else
+		{
+			signal->inbound_ed = inbound_ed;
+		} 
+	 // Resort the signal map
 		sortSignalMap(sm_index);
 	} 
 	else 
@@ -146,6 +152,7 @@ void updateInboundED(linkaddr_t sender, uint8_t inbound_ed)
 			signal = &signalMap[sm_index];
 
 			signal->neighbor = sender;
+
 			signal->inbound_ed = inbound_ed;
 			signal->outbound_ed = INVALID_ED;
 	
@@ -261,7 +268,7 @@ void updateNbSignalMap(uint8_t nbSM_index, linkaddr_t neighbor, linkaddr_t nb_ne
 
 
 /************** radio power translation **************/
-
+//float is large enough for our computation: 1.175494351e-38 to 3.40282347e+38
 /* RF231 datasheet power: 3.0, 2.8, 2.3, 1.8, 1.3, 0.7, 0.0, -1, -2, -3, -4, -5, -7, -9, -12, -17 */
 float powerLevelDBm[] = { 3.0, 2.8, 2.3, 1.8, 1.3, 0.7, 0.0, -1, -2, -3, -4, -5, -7, -9, -12, -17 };
 float powerLevel2dBm(uint8_t power_level) {

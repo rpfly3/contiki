@@ -43,7 +43,6 @@ typedef enum {
 typedef struct {
 	uint8_t length;				//--> frame length
 	uint8_t data[RF231_MAX_FRAME_LENGTH];	//--> PSDU data
-	uint8_t lqi;				//--> LQI value for received frame
 	uint8_t tx_ed; //received energy in transmission
 	uint8_t noise_ed; //received energy without transmission
 } rx_frame_t;
@@ -56,8 +55,6 @@ uint8_t ReadRegister(uint8_t reg);
 
 void WriteFrame(uint8_t *WriteBuffer, uint8_t length);
 void ReadFrame(rx_frame_t *ReadBuffer);
-
-uint8_t GetFrame(uint8_t *ReadBuffer);//for test
 
 void WriteSRAM(uint8_t addr, uint8_t *data, uint8_t len);
 void ReadSRAM(uint8_t addr, uint8_t *data, uint8_t len);

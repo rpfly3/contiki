@@ -41,7 +41,14 @@ static void resetChannelStatus()
 {
 	for (uint8_t i = 0; i < CHANNEL_NUM; ++i)
 	{
-		channel_status[i] = AVAILABLE;
+		if(i == CHANNEL_NUM - 1)
+		{
+			channel_status[i] = AVAILABLE;
+		}
+		else
+		{
+			channel_status[i] == UNAVAILABLE;
+		}
 	}
 }
 
