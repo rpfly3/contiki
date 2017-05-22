@@ -182,7 +182,8 @@ void updateER(uint8_t local_link_er_index, uint8_t pdr_index)
 		++(localLinkERTable[local_link_er_index].er_version);
 
 		updateConflictGraphForLocalERChange(local_link_er_index);
-		printf("SM index %u, SM size %u\r\n", i, valid_sm_entry_size);
+		deltaI_mW *= 1000000;
+		printf("SM index %u, SM size %u\r\n, scaled deltaI_mW %f", i, valid_sm_entry_size, deltaI_mW);
 	}
 
 	return;

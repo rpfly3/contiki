@@ -136,7 +136,6 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 
 		if (current_asn.ls4b <= BUILD_SIGNALMAP_PERIOD)
 		{
-			SetChannel(control_channel);
 			if (duty_cicle == 0)
 			{
 				start_rx();
@@ -163,29 +162,15 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 			}
 		
 		}
-  /*
-		else if (current_asn.ls4b == BUILD_SIGNALMAP_PERIOD + 1)
-		{
-			showSM();
-		}
-  */
 		else
 		{
 
 			if (duty_cicle == 0)
 			{
-				SetChannel(control_channel);
 				start_rx();
-				/*
-				for (uint8_t i = 0; i < local_link_er_size; ++i)
-				{
-					printf("Link %u conflict set size %u\r\n", localLinkERTable[i].link_index, conflict_set_size[i]);
-				}
-				*/
 			}
-			else if (duty_cicle == 1)
+			else if (duty_cicle == 1 || duty_cicle == 3)
 			{
-				SetChannel(control_channel);
 				uint8_t node_index = (current_asn.ls4b / TIME_SYNCH_FREQUENCY) % activeNodesSize;
 				prkmcs_control_signaling(node_index);
 			}
@@ -194,7 +179,6 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 				runLama(current_asn);
 				if (data_channel != INVALID_CHANNEL)
 				{
-					SetChannel(data_channel);
 					log_debug("Link index %u channel %u", my_link_index, data_channel);
 					if (!is_receiver)
 					{
@@ -225,8 +209,6 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 static void synch_slot_operation(struct rtimer* st, void* ptr)
 {
 	printf("Slot %lu\r\n", current_asn.ls4b);
- 	// base station only stay in control channel
-	SetChannel(control_channel);
 	if (!prkmcs_is_synchronized)
 	{
 		ctimer_set(&send_timer, 500, time_synch_send, NULL);

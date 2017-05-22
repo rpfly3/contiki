@@ -39,6 +39,7 @@ void prkmcsInit(void)
 		}
 
 		tx_power = powerLevel2dBm(DATA_POWER);
+		SetChannel(RF231_CHANNEL_26);
 		prkmcs_slot_operation_start();
 		log_info("PRKMCS is enabled");
 	}
