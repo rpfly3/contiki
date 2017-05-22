@@ -83,7 +83,7 @@ void prkmcs_control_signaling(uint8_t node_index)
 	{
 		start_rx();
 	}
-/*
+	/*
 	if (node_addr == activeNodes[node_index])
 	{
 		ctimer_set(&send_timer, 500, prkmcs_send_ctrl, NULL);
@@ -92,7 +92,7 @@ void prkmcs_control_signaling(uint8_t node_index)
 	{
 		start_rx();
 	}
-*/
+	*/
 }
 
 void showSM()
@@ -162,12 +162,21 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 			}
 		
 		}
+		else if(current_asn.ls4b == BUILD_SIGNALMAP_PERIOD + 1)
+		{
+			showSM();
+		}
 		else
 		{
 
 			if (duty_cicle == 0)
 			{
 				start_rx();
+				printf("Conflict link set size: \r\n");
+				for(uint8_t i = 0; i < local_link_er_size; ++i)
+				{
+					printf("Local Link %u, size %u \r\n", localLinkERTable[i].link_index, conflict_set_size[i]);
+				}
 			}
 			else if (duty_cicle == 1 || duty_cicle == 3)
 			{
@@ -198,7 +207,6 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 	}
 	else
 	{
-		SetChannel(control_channel);
 		start_rx();
 	}
 

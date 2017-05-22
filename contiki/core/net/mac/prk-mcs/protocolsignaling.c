@@ -157,7 +157,22 @@ void updateLinkER(uint8_t link_index, uint16_t er_version, uint8_t I_edge)
 
 bool inER(uint8_t ed, uint8_t I_edge) 
 {
-	bool in_er = (ed == INVALID_ED) ? false : (ed >= I_edge);
+	bool in_er;
+	if(ed == INVALID_ED)
+	{
+		if(I_edge == 0)
+		{
+			in_er = true;
+		}
+		else
+		{
+			in_er = false;
+		}
+	}
+	else
+	{
+		in_er = (ed >= I_edge);
+	}
 	return in_er;
 }
 
@@ -277,6 +292,7 @@ void updateConflictGraphForERChange(uint8_t link_er_index)
 			{
 				if (linkERTable[link_er_index].secondary & (1 << i))
 				{
+					// do nothing
 				}
 				else
 				{
@@ -293,6 +309,7 @@ void updateConflictGraphForERChange(uint8_t link_er_index)
 				}
 				else
 				{
+					// do nothing
 				}
 			}
 		}

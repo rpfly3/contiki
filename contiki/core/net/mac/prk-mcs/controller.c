@@ -147,13 +147,14 @@ void updateER(uint8_t local_link_er_index, uint8_t pdr_index)
 		float next_I_mW = dbm2mW(next_I_dBm);
 		float deltaI_mW = next_I_mW - current_I_mW;
 		float totalI_mW = 0;
+		float inbound_gain, erI_mW;
 
 		if (deltaI_mW < 0)
 		{
 			while (i < valid_sm_entry_size - 1)
 			{
-				float inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, signalMap[i].inbound_ed, 0);
-				float erI_mW = dbm2mW(tx_power - inbound_gain);
+				inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, signalMap[i].inbound_ed, 0);
+				erI_mW = dbm2mW(tx_power - inbound_gain);
 				totalI_mW += erI_mW;
 				if (fabs(totalI_mW) >= fabs(deltaI_mW))
 				{
@@ -166,8 +167,8 @@ void updateER(uint8_t local_link_er_index, uint8_t pdr_index)
 		{
 			while (i > 0)
 			{
-				float inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, signalMap[i].inbound_ed, 0);
-				float erI_mW = dbm2mW(tx_power - inbound_gain);
+				inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, signalMap[i].inbound_ed, 0);
+				erI_mW = dbm2mW(tx_power - inbound_gain);
 				totalI_mW += erI_mW;
 				if (fabs(totalI_mW) > fabs(deltaI_mW))
 				{
@@ -183,7 +184,7 @@ void updateER(uint8_t local_link_er_index, uint8_t pdr_index)
 
 		updateConflictGraphForLocalERChange(local_link_er_index);
 		deltaI_mW *= 1000000;
-		printf("SM index %u, SM size %u\r\n, scaled deltaI_mW %f", i, valid_sm_entry_size, deltaI_mW);
+		printf("SM index %u, SM size %u, scaled deltaI_mW %f\r\n", i, valid_sm_entry_size, deltaI_mW);
 	}
 
 	return;

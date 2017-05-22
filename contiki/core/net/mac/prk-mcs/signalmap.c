@@ -49,7 +49,7 @@ static void sortSignalMap(uint8_t index)
 	sm_entry_t tmp = signalMap[index];
 	uint8_t updated_inbound_ed = tmp.inbound_ed;
 
-	if (index > 0 && updated_inbound_ed < signalMap[index - 1].inbound_ed) 
+	if (index > 0 && updated_inbound_ed > signalMap[index - 1].inbound_ed) 
 	{
 		for (i = index; i > 0; i--) 
 		{
@@ -65,7 +65,7 @@ static void sortSignalMap(uint8_t index)
 		}
 		signalMap[i] = tmp;
 	}
-	else if (index + 1 < valid_sm_entry_size && updated_inbound_ed > signalMap[index + 1].inbound_ed) 
+	else if (index + 1 < valid_sm_entry_size && updated_inbound_ed < signalMap[index + 1].inbound_ed) 
 	{
 		for (i = index; i + 1 < valid_sm_entry_size; i++) 
 		{
