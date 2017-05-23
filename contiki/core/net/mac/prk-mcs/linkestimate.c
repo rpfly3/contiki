@@ -65,6 +65,33 @@ uint8_t findPDRTableIndex(linkaddr_t sender)
 }
 
 /************************ Link Quality Updating *************************/
+
+static float computeNbInterference(uint8_t sender, uint8_t rx_ed)
+{
+	// compute inbound_gain (dB) which is obtained with max power
+	uint8_t inbound_ed = getInboundED(sender);
+	float rx_dBm = ed2dBm(inbound_ed);
+	float inbound_gain = powerLevel2dBm(RF231_TX_PWR_MAX) - rx_dBm;
+
+	// compute P (dBm)
+	rx_dBm = powerLevel2dBm(RF231_TX_PWR_MIN) - inbound_gain;
+			
+	// compute P + I (dBm)
+	float rx_IdBm = ed2dBm(rx_ed);
+
+	// compute I (mW)
+	float nb_ImW = dbm2mW(rx_IdBm) - dbm2mW(rx_dBm);
+	if (nb_ImW <= 0)
+	{
+		nb_ImW = dbm2mW(-97);
+	}
+	else
+	{
+		// do nothing
+	}
+	return nb_ImW;
+}
+
 void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, uint8_t rx_ed) 
 {
     uint8_t pdr_index = findPDRTableIndex(sender);
@@ -76,28 +103,7 @@ void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, uint8_t rx_ed)
 		    pdrTable[pdr_index].sent_pkt += (sequence_num - pdrTable[pdr_index].sequence_num);
 		    pdrTable[pdr_index].received_pkt += 1;
 		    pdrTable[pdr_index].sequence_num = sequence_num;
-
-			// compute inbound_gain (dB) which is obtained with max power
-		    uint8_t inbound_ed = getInboundED(sender);
-		    float rx_dBm = ed2dBm(inbound_ed);
-			float inbound_gain = powerLevel2dBm(RF231_TX_PWR_MAX) - rx_dBm;
-
-			// compute P (dBm)
-			rx_dBm = powerLevel2dBm(RF231_TX_PWR_MIN) - inbound_gain;
-			
-			// compute P + I (dBm)
-		    float rx_IdBm = ed2dBm(rx_ed);
-
-			// compute I (mW)
-		    float nb_ImW = dbm2mW(rx_IdBm) - dbm2mW(rx_dBm);
-		    if (nb_ImW <= 0)
-		    {
-			    nb_ImW = dbm2mW(-97);
-		    }
-		    else
-		    {
-			    // do nothing
-		    }
+			float nb_ImW = computeNbInterference(sender, rx_ed);	
 		    pdrTable[pdr_index].nb_I += nb_ImW;
 
 			// check if it's time to update PDR

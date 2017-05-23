@@ -220,7 +220,7 @@ void prkmcs_receive()
 
 		for (uint8_t i = 0; i < num_er; ++i)
 		{
-			er_receive(buf_ptr, sender);
+			er_receive(buf_ptr);
 			buf_ptr += ER_SEGMENT_LENGTH;
 		}
 	}
@@ -249,7 +249,7 @@ void prkmcs_receive()
 
 			for (uint8_t i = 0; i < num_er; ++i)
 			{
-				er_receive(buf_ptr, sender);
+				er_receive(buf_ptr);
 				buf_ptr += ER_SEGMENT_LENGTH;
 			}
 		}
