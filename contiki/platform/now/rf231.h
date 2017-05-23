@@ -188,6 +188,6 @@ uint8_t getCCA(uint8_t CCA, uint8_t threshold);
 void rf231_set_interrupt(uint8_t interrupt);
 
 void InitED();
-uint8_t GetED();
+int8_t GetED();
 
 #endif

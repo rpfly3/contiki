@@ -349,10 +349,10 @@ void InitED()
 	WriteRegister(RF231_PHY_ED_LEVEL, 0);
 }
 
-uint8_t GetED()
+int8_t GetED()
 {
-	uint8_t ed = INVALID_ED;
-	ed = ReadRegister(RF231_PHY_ED_LEVEL);
+	int8_t ed = INVALID_ED;
+	ed = (int8_t)ReadRegister(RF231_PHY_ED_LEVEL);
 	return ed;
 }
 
@@ -409,9 +409,8 @@ void SetCCAMode(uint8_t CCA)
 	}
 	else
 	{
-		uint8_t Reg, original_mode;
-		Reg = ReadRegister(RF231_PHY_CC_CCA);
-		original_mode = Reg & 0x60;
+		uint8_t Reg = ReadRegister(RF231_PHY_CC_CCA);
+		uint8_t original_mode = Reg & 0x60;
 		if (original_mode != CCA)
 		{
 			Reg &= 0x1F;

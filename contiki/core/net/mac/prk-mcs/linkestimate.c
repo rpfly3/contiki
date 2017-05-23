@@ -74,33 +74,33 @@ uint8_t findPDRTableIndex(linkaddr_t sender)
 
 /************************ Link Quality Updating *************************/
 
-static float computeNbInterference(uint8_t sender, uint8_t rx_ed)
+static float computeNbInterference(uint8_t sender, int8_t rx_ed)
 {
 	// compute inbound_gain (dB) which is obtained with max power
-	uint8_t inbound_ed = getInboundED(sender);
-	float rx_dBm = ed2dBm(inbound_ed);
-	float inbound_gain = powerLevel2dBm(RF231_TX_PWR_MAX) - rx_dBm;
-
-	// compute P (dBm)
-	rx_dBm = powerLevel2dBm(RF231_TX_PWR_MIN) - inbound_gain;
-			
-	// compute P + I (dBm)
-	float rx_IdBm = ed2dBm(rx_ed);
-
-	// compute I (mW)
-	float nb_ImW = dbm2mW(rx_IdBm) - dbm2mW(rx_dBm);
-	if (nb_ImW <= 0)
+	int8_t inbound_ed = getInboundED(sender);
+	float nb_ImW;
+	if(inbound_ed != INVALID_ED && rx_ed != INVALID_ED)
 	{
-		nb_ImW = dbm2mW(-97);
+		float rx_dBm = ed2dBm(inbound_ed);
+		float inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, inbound_ed, 0);
+	
+		// compute P (dBm)
+		rx_dBm = powerLevel2dBm(RF231_TX_PWR_MIN) - inbound_gain;
+				
+		// compute P + I (dBm)
+		float rx_IdBm = ed2dBm(rx_ed);
+	
+		// compute I (mW)
+		nb_ImW = dbm2mW(rx_IdBm) - dbm2mW(rx_dBm);
 	}
 	else
 	{
-		// do nothing
+		nb_ImW = -1;
 	}
 	return nb_ImW;
 }
 
-void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, uint8_t rx_ed) 
+void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, int8_t rx_ed) 
 {
     uint8_t pdr_index = findPDRTableIndex(sender);
     if(pdr_index != INVALID_INDEX) 
@@ -112,7 +112,14 @@ void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, uint8_t rx_ed)
 		    pdrTable[pdr_index].received_pkt += 1;
 		    pdrTable[pdr_index].sequence_num = sequence_num;
 			float nb_ImW = computeNbInterference(sender, rx_ed);	
-		    pdrTable[pdr_index].nb_I += nb_ImW;
+			if(nb_ImW > MINIMUM_MW)
+			{
+		    	pdrTable[pdr_index].nb_I = pdrTable[pdr_index].nb_I <= MINIMUM_MW ? nb_ImW : nb_ImW * ALPHA + pdrTable[pdr_index].nb_I * (1 - ALPHA);
+			}
+			else
+			{
+				// invalid interference value -- do nothing
+			}
 
 			// check if it's time to update PDR
 		    if (sequence_num >= pdrTable[pdr_index].next_update_sequence)
@@ -120,7 +127,6 @@ void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, uint8_t rx_ed)
 		    	// update pdr info
 			    pdrTable[pdr_index].pdr_sample = pdrTable[pdr_index].received_pkt * 100 / pdrTable[pdr_index].sent_pkt;
 			    pdrTable[pdr_index].pdr = (pdrTable[pdr_index].pdr != INVALID_PDR) ? (ALPHA * pdrTable[pdr_index].pdr + (1 - ALPHA) * pdrTable[pdr_index].pdr_sample) : pdrTable[pdr_index].pdr_sample;
-			    pdrTable[pdr_index].nb_I = (pdrTable[pdr_index].nb_I / pdrTable[pdr_index].received_pkt);
 
 			    //update corresponding local er table entry
 				printf("Link %u PDR %u\r\n", localLinkERTable[pdrTable[pdr_index].local_link_er_index].link_index, pdrTable[pdr_index].pdr);
@@ -128,7 +134,7 @@ void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, uint8_t rx_ed)
 
 			    pdrTable[pdr_index].sent_pkt = 0;
 			    pdrTable[pdr_index].received_pkt = 0;
-			    pdrTable[pdr_index].nb_I = 0;
+				pdrTable[pdr_index].nb_I = 0;
 			    pdrTable[pdr_index].next_update_sequence = sequence_num + PDR_COMPUTE_WINDOW_SIZE;
 		    }
 		    else

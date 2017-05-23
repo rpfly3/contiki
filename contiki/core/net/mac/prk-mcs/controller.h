@@ -29,7 +29,7 @@ typedef struct {
 	/* signal map index defining the ER boundary */
 	uint8_t sm_index;
     /* use the I_edge (in ED) to indicate the ER boundary */
-    uint8_t I_edge;
+    int8_t I_edge;
 } local_link_er_t;
 
 

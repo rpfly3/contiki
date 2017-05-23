@@ -1,11 +1,6 @@
 #include "core/net/mac/prk-mcs/prkmcs.h"
 
-static uint16_t test_seq_no;
-void test_init()
-{
-	test_seq_no = 0;
-}
-
+static uint16_t test_seq_no = 0;
 /* | type | sender | sequence no | # of SM entry | SM entry | */
 
 void test_send()
@@ -46,7 +41,7 @@ void test_send()
 	++test_seq_no;
 }
 
-void test_receive(uint8_t *ptr)
+void test_receive(uint8_t *ptr, int8_t rx_ed)
 {
 	linkaddr_t sender;
 	uint16_t sequence_no;
@@ -59,12 +54,12 @@ void test_receive(uint8_t *ptr)
 	memcpy(&num_entry, ptr, sizeof(uint8_t));
 	ptr += sizeof(uint8_t);
 
-	printf("Received Test %u from %u: R-ED %u\r\n", sequence_no, sender, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed);
+	printf("Received Test %u from %u: R-ED %d\r\n", sequence_no, sender, rx_ed);
 	// Compute inbound gain only when EDs are valid
-	if ((rf231_rx_buffer[rf231_rx_buffer_head].tx_ed != INVALID_ED) && (rf231_rx_buffer[rf231_rx_buffer_head].tx_ed >= 0))
+	if (rx_ed != INVALID_ED)
 	{
 			
-		updateInboundED(sender, rf231_rx_buffer[rf231_rx_buffer_head].tx_ed);
+		updateInboundED(sender, rx_ed);
 	}
 	else
 	{

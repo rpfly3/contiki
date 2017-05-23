@@ -110,7 +110,7 @@ void printLinkERTable()
 /* update the link er table according to received ER information 
  * Note that these info are assumed to be valid. So caller should do validness checking.
 */
-void updateLinkER(uint8_t link_index, uint16_t er_version, uint8_t I_edge)
+void updateLinkER(uint8_t link_index, uint16_t er_version, int8_t I_edge)
 {
 	uint8_t link_er_index = findLinkERTableIndex(link_index); 
 	if (link_er_index == INVALID_INDEX)
@@ -157,30 +157,15 @@ void updateLinkER(uint8_t link_index, uint16_t er_version, uint8_t I_edge)
 
 /*********************** Contention Table  Management **********************/
 
-bool inER(uint8_t ed, uint8_t I_edge) 
+bool inER(int8_t ed, int8_t I_edge) 
 {
-	bool in_er;
-	if(ed == INVALID_ED)
-	{
-		if(I_edge == 0)
-		{
-			in_er = true;
-		}
-		else
-		{
-			in_er = false;
-		}
-	}
-	else
-	{
-		in_er = (ed >= I_edge);
-	}
+	bool in_er = (ed >= I_edge);
 	return in_er;
 }
 
 bool isConflicting(uint8_t link_er_index, uint8_t local_link_er_index) 
 {
-	uint8_t inbound_ed, outbound_ed;
+	int8_t inbound_ed, outbound_ed;
 	bool conflicted = false;
 
 	if (!localLinkERTable[local_link_er_index].is_sender)
@@ -329,16 +314,16 @@ void updateConflictGraphForERChange(uint8_t link_er_index)
 bool prepareERSegment(uint8_t *ptr)
 {
 	bool prepared = false;
-	// this outbound_ed could be invalid
-	uint8_t outbound_ed = getOutboundED(linkERTable[er_sending_index].receiver);
+
+	int8_t outbound_ed = getOutboundED(linkERTable[er_sending_index].receiver);
 	if (inER(outbound_ed, linkERTable[er_sending_index].I_edge))
 	{
 		memcpy(ptr, &(linkERTable[er_sending_index].link_index), sizeof(uint8_t));
 		ptr += sizeof(uint8_t);
 		memcpy(ptr, &(linkERTable[er_sending_index].er_version), sizeof(uint16_t));
 		ptr += sizeof(uint16_t);
-		memcpy(ptr, &(linkERTable[er_sending_index].I_edge), sizeof(uint8_t));
-		ptr += sizeof(uint8_t);
+		memcpy(ptr, &(linkERTable[er_sending_index].I_edge), sizeof(int8_t));
+		ptr += sizeof(int8_t);
 
 		prepared = true;
 	}

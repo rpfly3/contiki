@@ -19,6 +19,13 @@ float PDR_INV_TABLE[] = {0, 0.36, 0.51, 0.61, 0.69, 0.75, 0.81, 0.86, 0.91, 0.95
 	2.43, 2.46, 2.50, 2.53, 2.56, 2.60, 2.63, 2.67, 2.70, 2.74, 2.78, 2.82, 2.86, 2.90, 2.94, 2.99, 3.03, 3.08, 3.13, 3.18, 3.24, 
 	3.29, 3.35, 3.42, 3.48, 3.55, 3.63, 3.71, 3.80, 3.89, 4.00, 4.12, 4.25, 4.40, 4.58, 4.79, 5.07, 7.53, 16.09, 28.71};
 
+/* used to compute current interference level when this information is not available from sampling */
+float PDR_SINR[] = {0, 0.37427, 0.51427, 0.61427, 0.69427, 0.76427, 0.82427, 0.87427, 0.91427, 0.96427, 1.0043, 1.0443, 1.0843, 1.1143, 1.1543, 1.1843, 1.2143, 1.2443,
+1.2743, 1.3043, 1.3343, 1.3643, 1.3943, 1.4243, 1.4443, 1.4743, 1.5043, 1.5243, 1.5543, 1.5843, 1.6043, 1.6343, 1.6543, 1.6843, 1.7043, 1.7343, 1.7643, 1.7843, 1.8143,
+1.8343, 1.8643, 1.8843, 1.9143, 1.9443, 1.9643, 1.9943, 2.0143, 2.0443, 2.0743, 2.0943, 2.1243, 2.1543, 2.1743, 2.2043, 2.2343, 2.2643, 2.2943, 2.3243, 2.3543, 2.3843,
+2.4143, 2.4443, 2.4743, 2.5043, 2.5343, 2.5743, 2.6043, 2.6443, 2.6743, 2.7143, 2.7543, 2.7843, 2.8243, 2.8643, 2.9143, 2.9543, 2.9943, 3.0443, 3.0943, 3.1443, 3.1943,
+3.2443, 3.3043, 3.3643, 3.4243, 3.4943, 3.5643, 3.6343, 3.7243, 3.8043, 3.9043, 4.0043, 4.1243, 4.2543, 4.4043, 4.5843, 4.8043, 5.0743, 7.5334, 16.093};
+
 local_link_er_t localLinkERTable[LOCAL_LINK_ER_TABLE_SIZE];
 uint8_t local_link_er_size = 0;
 uint8_t local_er_sending_index = 0;
@@ -122,8 +129,21 @@ static float pdr2DeltaIdB(uint8_t pdr_index, uint8_t local_link_er_index)
 
 static float deltaIdB2mW(uint8_t pdr_index, float deltaI_dB)
 {
-	float current_I_mW = pdrTable[pdr_index].nb_I;
-	float current_I_dBm = mW2dBm(current_I_mW);
+	float current_I_mW, current_I_dBm;
+
+	if(pdrTable[pdr_index].nb_I > MINIMUM_MW)
+	{
+		current_I_mW= pdrTable[pdr_index].nb_I;
+		current_I_dBm = mW2dBm(current_I_mW);
+	}
+	else
+	{
+		uint8_t link_pdr = pdrTable[pdr_index].pdr;
+		float sinr = PDR_SINR[link_pdr];
+		current_I_dBm = tx_power - sinr;
+		current_I_mW = dbm2mW(current_I_dBm);
+	}
+
 	float next_I_dBm = current_I_dBm + deltaI_dB;
 	float next_I_mW = dbm2mW(next_I_dBm);
 	
@@ -152,9 +172,17 @@ void updateER(uint8_t pdr_index)
 			do
 			{
 				i += 1;
-				inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, signalMap[i].inbound_ed, 0);
-				erI_mW = dbm2mW(tx_power - inbound_gain);
-				totalI_mW += erI_mW;
+				// unknown ed indicates the largest er
+				if(signalMap[i].inbound_ed != INVALID_ED)
+				{
+					inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, signalMap[i].inbound_ed, 0);
+					erI_mW = dbm2mW(tx_power - inbound_gain);
+					totalI_mW += erI_mW;
+				}
+				else
+				{
+					break;
+				}
 			} while (fabs(totalI_mW) < fabs(deltaI_mW) && i < valid_sm_entry_size - 1);
 		}
 		else if (deltaI_mW > 0 && i > 0)
@@ -163,10 +191,17 @@ void updateER(uint8_t pdr_index)
 			do
 			{
 				i -= 1;
-				inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, signalMap[i].inbound_ed, 0);
-				erI_mW = dbm2mW(tx_power - inbound_gain);
-				totalI_mW += erI_mW;
-
+				// unknown ed won't contribute to interference
+				if(signalMap[i].inbound_ed != INVALID_ED)
+				{
+					inbound_gain = computeInboundGain(RF231_TX_PWR_MAX, signalMap[i].inbound_ed, 0);
+					erI_mW = dbm2mW(tx_power - inbound_gain);
+					totalI_mW += erI_mW;
+				}
+				else
+				{
+					continue;
+				}
 			} while (fabs(totalI_mW) < fabs(deltaI_mW) && i > 0);
 		}
 	
@@ -184,7 +219,7 @@ void updateER(uint8_t pdr_index)
 }
 
 /* sender update local er by receiving er from receiver */
-void updateLocalER(uint8_t local_link_er_index, uint16_t er_version, uint8_t I_edge)
+void updateLocalER(uint8_t local_link_er_index, uint16_t er_version, int8_t I_edge)
 {
 	if (er_version > localLinkERTable[local_link_er_index].er_version)
 	{
@@ -210,8 +245,8 @@ bool prepareLocalERSegment(uint8_t *ptr)
 		ptr += sizeof(uint8_t);
 		memcpy(ptr, &(localLinkERTable[local_er_sending_index].er_version), sizeof(uint16_t));
 		ptr += sizeof(uint16_t);
-		memcpy(ptr, &(localLinkERTable[local_er_sending_index].I_edge), sizeof(uint8_t));
-		ptr += sizeof(uint8_t);
+		memcpy(ptr, &(localLinkERTable[local_er_sending_index].I_edge), sizeof(int8_t));
+		ptr += sizeof(int8_t);
 
 		prepared = true;
 	}
@@ -232,9 +267,9 @@ void er_receive(uint8_t *ptr)
 	uint16_t er_version;
 	memcpy(&er_version, ptr, sizeof(uint16_t));
 	ptr += sizeof(uint16_t);
-	uint8_t I_edge;
-	memcpy(&I_edge, ptr, sizeof(uint8_t));
-	ptr += sizeof(uint8_t);
+	int8_t I_edge;
+	memcpy(&I_edge, ptr, sizeof(int8_t));
+	ptr += sizeof(int8_t);
 
 	if (link_index < activeLinksSize)
 	{

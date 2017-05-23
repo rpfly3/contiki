@@ -85,8 +85,3 @@ void runLama(struct asn_t current_slot) {
 	}
 	return;
 }
-
-void onama_init()
-{
-	control_channel = RF231_CHANNEL_26;
-}

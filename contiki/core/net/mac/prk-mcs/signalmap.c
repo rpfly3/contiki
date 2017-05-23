@@ -10,12 +10,12 @@
 /* NOTE: the signalMap is always sorted, the entries after an invalid entry are all invalid!!! */
 /* signal map: used for adjust ER */
 sm_entry_t signalMap[SIGNAL_MAP_SIZE];
-uint8_t valid_sm_entry_size;
-uint8_t sm_sending_index;
+uint8_t valid_sm_entry_size = 0;
+uint8_t sm_sending_index = 0;
 
 /* neighbors' signal maps: used for get conflicting relations */
 nb_sm_t nbSignalMap[NB_SM_SIZE];
-uint8_t valid_nb_sm_entry_size;
+uint8_t valid_nb_sm_entry_size = 0;
 
 
 /*************** Signal Map tabel Management ***************/
@@ -34,12 +34,6 @@ uint8_t findSignalMapIndex(linkaddr_t neighbor)
 	return index;
 }
 
-/* find the total number of valid entries in the signal map table */
-uint8_t getSignalMapValidEntrySize() 
-{
-	return valid_sm_entry_size;
-}
-
 /* sort Signal Map in ascending order of inbound gain after updating */
 static void sortSignalMap(uint8_t index) 
 {
@@ -47,11 +41,11 @@ static void sortSignalMap(uint8_t index)
 	sm_entry_t* signal;
 
 	sm_entry_t tmp = signalMap[index];
-	uint8_t updated_inbound_ed = tmp.inbound_ed;
+	int8_t updated_inbound_ed = tmp.inbound_ed;
 
 	if (index > 0 && updated_inbound_ed > signalMap[index - 1].inbound_ed) 
 	{
-		for (i = index; i > 0; i--) 
+		for (i = index; i > 0; --i) 
 		{
 			signal = &signalMap[i - 1];
 			if (updated_inbound_ed > signal->inbound_ed) 
@@ -67,7 +61,7 @@ static void sortSignalMap(uint8_t index)
 	}
 	else if (index + 1 < valid_sm_entry_size && updated_inbound_ed < signalMap[index + 1].inbound_ed) 
 	{
-		for (i = index; i + 1 < valid_sm_entry_size; i++) 
+		for (i = index; i + 1 < valid_sm_entry_size; ++i) 
 		{
 			signal = &signalMap[i + 1];
 			if (updated_inbound_ed < signal->inbound_ed) 
@@ -84,10 +78,8 @@ static void sortSignalMap(uint8_t index)
 }
 
 
-/* update a signal map entry with given parameters: keep the closest SIGNAL_MAP_SIZE neighbors, 
- * Note that outbound_gain is assumed to be INVALID_GAIN.
-*/
-static void updateOutboundED(linkaddr_t receiver, uint8_t outbound_ed) 
+/* Note that outbound_ed is assumed to be INVALID_ED. */
+static void updateOutboundED(linkaddr_t receiver, int8_t outbound_ed) 
 {
 	sm_entry_t* signal;
 
@@ -109,10 +101,6 @@ static void updateOutboundED(linkaddr_t receiver, uint8_t outbound_ed)
 			signal->neighbor = receiver;
 			signal->outbound_ed = outbound_ed;
 			signal->inbound_ed = INVALID_ED;
-
-			// here could be problemitic
-   			// Resort the signal map
-			//sortSignalMap(index);
 		}
 		else
 		{
@@ -122,12 +110,8 @@ static void updateOutboundED(linkaddr_t receiver, uint8_t outbound_ed)
 	return;
 }
 
-/* add entries to local signal map to build the inital signal map 
- * Note that inbound_ed is assumed to be INVALID_ED.
-*/
-
-// TO DO: deal with the INVALID_ED
-void updateInboundED(linkaddr_t sender, uint8_t inbound_ed)
+/* add entries to local signal map to build the inital signal map */
+void updateInboundED(linkaddr_t sender, int8_t inbound_ed)
 {
 	sm_entry_t* signal;
 	uint8_t sm_index = findSignalMapIndex(sender);
@@ -200,7 +184,7 @@ uint8_t findNbSignalMapEntryIndex(uint8_t nb_sm_index, linkaddr_t neighbor)
 	return index;
 }
 
-void updateNbSignalMap(uint8_t nbSM_index, linkaddr_t neighbor, linkaddr_t nb_neighbor, uint8_t inbound_ed, uint8_t outbound_ed)
+void updateNbSignalMap(uint8_t nbSM_index, linkaddr_t neighbor, linkaddr_t nb_neighbor, int8_t inbound_ed, int8_t outbound_ed)
 {
 	uint8_t entry_index;
 	if (nbSM_index == INVALID_INDEX)
@@ -214,7 +198,7 @@ void updateNbSignalMap(uint8_t nbSM_index, linkaddr_t neighbor, linkaddr_t nb_ne
 			nbSignalMap[nbSM_index].entry_num = 0;
 
 			entry_index = nbSignalMap[nbSM_index].entry_num;
-			++(nbSignalMap[nbSM_index].entry_num);
+			nbSignalMap[nbSM_index].entry_num += 1;
 
 			nbSignalMap[nbSM_index].nb_sm[entry_index].neighbor = nb_neighbor;
 			nbSignalMap[nbSM_index].nb_sm[entry_index].inbound_ed = inbound_ed;
@@ -234,7 +218,7 @@ void updateNbSignalMap(uint8_t nbSM_index, linkaddr_t neighbor, linkaddr_t nb_ne
 			if (nbSignalMap[nbSM_index].entry_num < NB_SIGNAL_MAP_SIZE)
 			{
 				entry_index = nbSignalMap[nbSM_index].entry_num;
-				++(nbSignalMap[nbSM_index].entry_num);
+				nbSignalMap[nbSM_index].entry_num += 1;
 
 				nbSignalMap[nbSM_index].nb_sm[entry_index].neighbor = nb_neighbor;
 				nbSignalMap[nbSM_index].nb_sm[entry_index].inbound_ed = inbound_ed;
@@ -274,25 +258,29 @@ void updateNbSignalMap(uint8_t nbSM_index, linkaddr_t neighbor, linkaddr_t nb_ne
 //float is large enough for our computation: 1.175494351e-38 to 3.40282347e+38
 /* RF231 datasheet power: 3.0, 2.8, 2.3, 1.8, 1.3, 0.7, 0.0, -1, -2, -3, -4, -5, -7, -9, -12, -17 */
 float powerLevelDBm[] = { 3.0, 2.8, 2.3, 1.8, 1.3, 0.7, 0.0, -1, -2, -3, -4, -5, -7, -9, -12, -17 };
-float powerLevel2dBm(uint8_t power_level) {
+float powerLevel2dBm(uint8_t power_level) 
+{
+	float dBm = INVALID_DBM;
 	/* note that here the index of powre level is reversed */
 	if (power_level <= RF231_TX_PWR_MIN && power_level >= RF231_TX_PWR_MAX)
 	{
-		return powerLevelDBm[power_level];
+		dBm = powerLevelDBm[power_level];
 	}
 	else if (power_level > RF231_TX_PWR_MIN)
 	{
-		return powerLevelDBm[RF231_TX_PWR_MIN];
+		dBm = powerLevelDBm[RF231_TX_PWR_MIN];
 	}
 	else
 	{
-		return powerLevelDBm[RF231_TX_PWR_MAX];
+		dBm = powerLevelDBm[RF231_TX_PWR_MAX];
 	}
+
+	return dBm;
 }
 
 
 /* RF231 RF input power with ED value in the valid range of 0 to 84: P_RF = -91 + ED [dBm] */
-float ed2dBm(uint8_t ed)
+float ed2dBm(int8_t ed)
 {
 	float dbm = INVALID_DBM;
 	if (ed <= 84)
@@ -320,7 +308,7 @@ float mW2dBm(float mW)
 
 /**************** Signal Map Interface *********************/
 
-float computeInboundGain(uint8_t tx_power_level, uint8_t tx_ed, uint8_t noise_ed) 
+float computeInboundGain(uint8_t tx_power_level, int8_t tx_ed, int8_t noise_ed) 
 {
 	float tx_dbm, noise_dbm = -97;
 	tx_dbm = ed2dBm(tx_ed);
@@ -330,9 +318,9 @@ float computeInboundGain(uint8_t tx_power_level, uint8_t tx_ed, uint8_t noise_ed
 }
 
 /* get the inbound gain of given sender */
-uint8_t getInboundED(linkaddr_t sender)
+int8_t getInboundED(linkaddr_t sender)
 {
-	uint8_t inbound_ed = INVALID_ED;
+	int8_t inbound_ed = INVALID_ED;
 	for (uint8_t i = 0; i < valid_sm_entry_size; ++i)
 	{
 		if (signalMap[i].neighbor == sender)
@@ -344,9 +332,9 @@ uint8_t getInboundED(linkaddr_t sender)
 	return inbound_ed;
 }
 /* get the outbound gain to a given receiver */
-uint8_t getOutboundED(linkaddr_t receiver)
+int8_t getOutboundED(linkaddr_t receiver)
 {
-	uint8_t outbound_ed = INVALID_ED;
+	int8_t outbound_ed = INVALID_ED;
 	for (uint8_t i = 0; i < valid_sm_entry_size; ++i)
 	{
 		if (signalMap[i].neighbor == receiver)
@@ -358,9 +346,9 @@ uint8_t getOutboundED(linkaddr_t receiver)
 	return outbound_ed;
 }
 
-uint8_t getNbInboundED(linkaddr_t sender, linkaddr_t receiver)
+int8_t getNbInboundED(linkaddr_t sender, linkaddr_t receiver)
 {
-	uint8_t inbound_ed = INVALID_ED;
+	int8_t inbound_ed = INVALID_ED;
 	
 	uint8_t index = findNbSignalMapIndex(receiver);
 	if (index != INVALID_INDEX)
@@ -374,7 +362,7 @@ uint8_t getNbInboundED(linkaddr_t sender, linkaddr_t receiver)
 			}
 			else
 			{
-				continue;
+				// do nothing
 			}
 		}
 	}
@@ -392,7 +380,7 @@ uint8_t getNbInboundED(linkaddr_t sender, linkaddr_t receiver)
 				}
 				else
 				{
-					continue;
+					// do nothing
 				}
 			}
 		}
@@ -404,9 +392,9 @@ uint8_t getNbInboundED(linkaddr_t sender, linkaddr_t receiver)
 	return inbound_ed;
 }
 
-uint8_t getNbOutboundED(linkaddr_t sender, linkaddr_t receiver)
+int8_t getNbOutboundED(linkaddr_t sender, linkaddr_t receiver)
 {
-	uint8_t outbound_ed = INVALID_ED;
+	int8_t outbound_ed = INVALID_ED;
 
 	uint8_t index = findNbSignalMapIndex(sender);
 	if (index != INVALID_INDEX)
@@ -455,11 +443,10 @@ void prepareSMSegment(uint8_t *ptr)
 {
 	memcpy(ptr, &(signalMap[sm_sending_index].neighbor), sizeof(linkaddr_t));
 	ptr += sizeof(linkaddr_t);
-	// inbound_eds are all valid
-	memcpy(ptr, &(signalMap[sm_sending_index].inbound_ed), sizeof(uint8_t));
-	ptr += sizeof(uint8_t);
-	memcpy(ptr, &(signalMap[sm_sending_index].outbound_ed), sizeof(uint8_t));
-	ptr += sizeof(uint8_t);	
+	memcpy(ptr, &(signalMap[sm_sending_index].inbound_ed), sizeof(int8_t));
+	ptr += sizeof(int8_t);
+	memcpy(ptr, &(signalMap[sm_sending_index].outbound_ed), sizeof(int8_t));
+	ptr += sizeof(int8_t);	
 
 	++sm_sending_index;
 	return;
@@ -470,13 +457,12 @@ void sm_receive(uint8_t *ptr, linkaddr_t sender)
 	linkaddr_t neighbor;
 	memcpy(&neighbor, ptr, sizeof(linkaddr_t));
 	ptr += sizeof(linkaddr_t);
-	uint8_t inbound_ed, outbound_ed;
-	memcpy(&inbound_ed, ptr, sizeof(uint8_t));
-	ptr += sizeof(uint8_t);
-	memcpy(&outbound_ed, ptr, sizeof(uint8_t));
-	ptr += sizeof(uint8_t);
+	int8_t inbound_ed, outbound_ed;
+	memcpy(&inbound_ed, ptr, sizeof(int8_t));
+	ptr += sizeof(int8_t);
+	memcpy(&outbound_ed, ptr, sizeof(int8_t));
+	ptr += sizeof(int8_t);
 
-	//log_debug("sm: %u to %u", neighbor, local);
 	if (neighbor != node_addr)
 	{
 		//Add to neighbor signal map
@@ -495,7 +481,7 @@ void sm_receive(uint8_t *ptr, linkaddr_t sender)
 	else
 	{
 		// If related to node_addr, add to local signal map
-		if (inbound_ed != INVALID_GAIN)
+		if (inbound_ed != INVALID_ED)
 		{
 			updateOutboundED(sender, inbound_ed);
 		}
@@ -505,11 +491,4 @@ void sm_receive(uint8_t *ptr, linkaddr_t sender)
 		}
 	}
 	return;
-}
-
-void signalMapInit()
-{
-	valid_sm_entry_size = 0;
-	sm_sending_index = 0;
-	valid_nb_sm_entry_size = 0;
 }

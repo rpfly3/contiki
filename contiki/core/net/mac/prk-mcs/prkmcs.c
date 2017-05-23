@@ -21,10 +21,6 @@ void prkmcsInit(void)
 	protocolSignalingInit();
 	initController();
 	linkestimateInit();
-	onama_init();
-	signalMapInit();
-	time_synch_init();
-	test_init();
 
 	process_start(&irq_clear_process, NULL);
 	process_start(&rx_process, NULL);
@@ -191,7 +187,7 @@ void prkmcs_send_data()
 void prkmcs_receive() 
 {
 	uint8_t *buf_ptr = rf231_rx_buffer[rf231_rx_buffer_head].data;
-	uint8_t rx_ed = rf231_rx_buffer[rf231_rx_buffer_head].tx_ed;
+	int8_t rx_ed = rf231_rx_buffer[rf231_rx_buffer_head].tx_ed;
 	uint8_t data_type;
 
 	buf_ptr += FCF; // remove fcf byte
@@ -200,7 +196,7 @@ void prkmcs_receive()
 
 	if (data_type == TEST_PACKET)
 	{
-		test_receive(buf_ptr);
+		test_receive(buf_ptr, rx_ed);
 	}
 	else if (data_type == CONTROL_PACKET)
 	{
@@ -216,7 +212,7 @@ void prkmcs_receive()
 		memcpy(&num_er, buf_ptr, sizeof(uint8_t));
 		buf_ptr += sizeof(uint8_t);
 		
-		printf("Received Control %u from %u: rx ed %u\r\n", packet_seq_no, sender, rx_ed);
+		printf("Received Control %u from %u: rx ed %d\r\n", packet_seq_no, sender, rx_ed);
 
 		for (uint8_t i = 0; i < num_er; ++i)
 		{
@@ -244,7 +240,7 @@ void prkmcs_receive()
 
 		if (receiver == node_addr)
 		{
-			printf("Received Data %u from %u: rx ed %u\r\n", packet_seq_no, sender, rx_ed);
+			printf("Received Data %u from %u: rx ed %d\r\n", packet_seq_no, sender, rx_ed);
 			updateLinkQuality(sender, packet_seq_no, rx_ed);
 
 			for (uint8_t i = 0; i < num_er; ++i)

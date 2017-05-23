@@ -34,5 +34,5 @@ typedef struct {
 
 uint8_t findPDRTableIndex(linkaddr_t sender);
 void linkestimateInit();
-void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, uint8_t rx_ed);
+void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, int8_t rx_ed);
 #endif /* __LINK_ESTIMATOR_H__ */

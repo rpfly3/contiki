@@ -1,12 +1,8 @@
 #include "core/net/mac/prk-mcs/prkmcs.h"
 
 
-static uint16_t time_synch_no;
+static uint16_t time_synch_no = 0;
 PROCESS(heart_beat_process, "Heart beat process");
-void time_synch_init()
-{
-	time_synch_no = 0;
-}
 
 /*----------------------- Send time synch packet ----------------------------*/
 void time_synch_send()
