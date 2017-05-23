@@ -132,8 +132,9 @@ static float deltaIdB2mW(uint8_t pdr_index, float deltaI_dB)
 }
 
 /* receiver update ER by computing \delta I */
-void updateER(uint8_t local_link_er_index, uint8_t pdr_index) 
+void updateER(uint8_t pdr_index) 
 {
+	uint8_t local_link_er_index = pdrTable[pdr_index].local_link_er_index;
 	// check if ER is valid
 	if (localLinkERTable[local_link_er_index].er_version == 0)
 	{

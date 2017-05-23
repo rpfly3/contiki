@@ -17,6 +17,7 @@ enum {
 typedef struct {
     /* link layer address of the neighbor */
     linkaddr_t sender;
+    uint8_t local_link_er_index;
     /* last data sequence number received from this neighbor */
     uint16_t sequence_num;
 	uint16_t next_update_sequence;

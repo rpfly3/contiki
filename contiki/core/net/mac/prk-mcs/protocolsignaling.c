@@ -9,14 +9,14 @@
 #include "core/net/mac/prk-mcs/prkmcs.h"
 
 link_er_t linkERTable[LINK_ER_TABLE_SIZE];
-uint8_t link_er_size;
-uint8_t er_sending_index;
+uint8_t link_er_size = 0;
+uint8_t er_sending_index = 0;
 uint8_t conflict_set_size[LOCAL_LINK_ER_TABLE_SIZE] = { 0 };
 
 /**************************** Link ER Table Management ************************/
 
 /* initialize link ER table with primary conflict links */
-void initLinkERTable() 
+void protocolSignalingInit()
 {
 	if (activeLinksSize >= LINK_ER_TABLE_SIZE)
 	{
@@ -25,50 +25,52 @@ void initLinkERTable()
 			log_error("The local link ER table is too small.");
 		} while (1);
 	}
-
-	link_er_size = 0;
-	uint8_t added = 0;
-	// add non-local primary conflict links to the link ER table
-	for (uint8_t j = 0; j < activeLinksSize; ++j)
+	else
 	{
-		added = 0;
-		if (findLocalIndex(j) == INVALID_INDEX)
+		uint8_t added;
+		// add non-local primary conflict links to the link ER table
+		for (uint8_t j = 0; j < activeLinksSize; ++j)
 		{
-			for (uint8_t i = 0; i < localLinksSize; ++i)
+			added = 0;
+			if (findLocalIndex(j) == INVALID_INDEX)
 			{
-				if (activeLinks[j].sender == activeLinks[localLinks[i]].sender || 
-					activeLinks[j].sender == activeLinks[localLinks[i]].receiver || 
-					activeLinks[j].receiver == activeLinks[localLinks[i]].sender ||
-					activeLinks[j].receiver == activeLinks[localLinks[i]].receiver)
-				{				
-					// already added to link er table but conflict with another link
-					if (!added)
-					{
-						linkERTable[link_er_size].sender = activeLinks[j].sender;
-						linkERTable[link_er_size].receiver = activeLinks[j].receiver;
-						linkERTable[link_er_size].link_index = j;
-						linkERTable[link_er_size].primary = 0;
-						linkERTable[link_er_size].secondary = 0;
-						linkERTable[link_er_size].primary |= (1 << i);
-						conflict_set_size[i] += 1;
-						linkERTable[link_er_size].er_version = 0;
-						linkERTable[link_er_size].I_edge = INVALID_ED;
-
-						added = 1;
-					}
-					else
-					{
-						linkERTable[link_er_size].primary |= (1 << i);	
+				for (uint8_t i = 0; i < localLinksSize; ++i)
+				{
+					if (activeLinks[j].sender == activeLinks[localLinks[i]].sender || 
+						activeLinks[j].sender == activeLinks[localLinks[i]].receiver || 
+						activeLinks[j].receiver == activeLinks[localLinks[i]].sender ||
+						activeLinks[j].receiver == activeLinks[localLinks[i]].receiver)
+					{				
+						// already added to link er table but conflict with another link
+						if (!added)
+						{
+							linkERTable[link_er_size].sender = activeLinks[j].sender;
+							linkERTable[link_er_size].receiver = activeLinks[j].receiver;
+							linkERTable[link_er_size].link_index = j;
+							linkERTable[link_er_size].primary = 0;
+							linkERTable[link_er_size].secondary = 0;
+							linkERTable[link_er_size].primary |= (1 << i);
+							conflict_set_size[i] += 1;
+							linkERTable[link_er_size].er_version = 0;
+							linkERTable[link_er_size].I_edge = INVALID_ED;
+	
+							added = 1;
+						}
+						else
+						{
+							linkERTable[link_er_size].primary |= (1 << i);	
+						}
 					}
 				}
-			}
-			if (added)
-			{
-				++link_er_size;	
-			}
-			else
-			{
-				// do nothing
+
+				if (added)
+				{
+					++link_er_size;	
+				}
+				else
+				{
+					// do nothing
+				}
 			}
 		}
 	}
@@ -327,6 +329,7 @@ void updateConflictGraphForERChange(uint8_t link_er_index)
 bool prepareERSegment(uint8_t *ptr)
 {
 	bool prepared = false;
+	// this outbound_ed could be invalid
 	uint8_t outbound_ed = getOutboundED(linkERTable[er_sending_index].receiver);
 	if (inER(outbound_ed, linkERTable[er_sending_index].I_edge))
 	{
@@ -345,11 +348,4 @@ bool prepareERSegment(uint8_t *ptr)
 	}
 	++er_sending_index;
 	return prepared;
-}
-
-/* init protocol signaling module */
-void protocolSignalingInit()
-{
-	er_sending_index = 0;
-	initLinkERTable();
 }

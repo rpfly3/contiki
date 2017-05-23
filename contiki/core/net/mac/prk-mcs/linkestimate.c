@@ -14,9 +14,16 @@ uint8_t pdr_table_size;
 /**************** PDR Table Management ****************/
 
 /* initialize the neighbor table */
-void linkestimateInit() {
+void linkestimateInit() 
+{
+	// make sure local link er table is initialized	
+	while (localLinksSize != local_link_er_size)
+	{
+		log_error("Local link er table is not initialized");
+	}
+
 	pdr_table_size = 0;
-	for (uint8_t i = 0; i < localLinksSize; ++i)
+	for (uint8_t i = 0; i < local_link_er_size; ++i)
 	{
 		// Trap the invalid PDR table access
 		if (pdr_table_size >= PDR_TABLE_SIZE)
@@ -28,10 +35,11 @@ void linkestimateInit() {
 		}
 		else
 		{
-			if (activeLinks[localLinks[i]].receiver == node_addr)
+			if (!localLinkERTable[i].is_sender)
 			{
 				// Initialize PDR table entry
-				pdrTable[pdr_table_size].sender = activeLinks[localLinks[i]].sender;
+				pdrTable[pdr_table_size].sender = localLinkERTable[i].neighbor;
+				pdrTable[pdr_table_size].local_link_er_index = i;
 				pdrTable[pdr_table_size].sequence_num = 0;
 				pdrTable[pdr_table_size].next_update_sequence = PDR_COMPUTE_WINDOW_SIZE;
 				pdrTable[pdr_table_size].received_pkt = 0;
@@ -114,20 +122,10 @@ void updateLinkQuality(linkaddr_t sender, uint16_t sequence_num, uint8_t rx_ed)
 			    pdrTable[pdr_index].pdr = (pdrTable[pdr_index].pdr != INVALID_PDR) ? (ALPHA * pdrTable[pdr_index].pdr + (1 - ALPHA) * pdrTable[pdr_index].pdr_sample) : pdrTable[pdr_index].pdr_sample;
 			    pdrTable[pdr_index].nb_I = (pdrTable[pdr_index].nb_I / pdrTable[pdr_index].received_pkt);
 
-			    // find the local_link_er_index and update corresponding local er table entry
-			    for (uint8_t i = 0; i < local_link_er_size; ++i)
-			    {
-				    if ((localLinkERTable[i].neighbor == sender) && (!localLinkERTable[i].is_sender))
-				    {
-					    printf("Link %u PDR %u\r\n", localLinkERTable[i].link_index, pdrTable[pdr_index].pdr);
-					    updateER(i, pdr_index);
-					    break;
-				    }
-				    else
-				    {
-					    continue;
-				    }
-			    }
+			    //update corresponding local er table entry
+				printf("Link %u PDR %u\r\n", localLinkERTable[pdrTable[pdr_index].local_link_er_index].link_index, pdrTable[pdr_index].pdr);
+				updateER(pdr_index);
+
 			    pdrTable[pdr_index].sent_pkt = 0;
 			    pdrTable[pdr_index].received_pkt = 0;
 			    pdrTable[pdr_index].nb_I = 0;

@@ -110,8 +110,9 @@ static void updateOutboundED(linkaddr_t receiver, uint8_t outbound_ed)
 			signal->outbound_ed = outbound_ed;
 			signal->inbound_ed = INVALID_ED;
 
+			// here could be problemitic
    			// Resort the signal map
-			sortSignalMap(index);
+			//sortSignalMap(index);
 		}
 		else
 		{
@@ -122,8 +123,10 @@ static void updateOutboundED(linkaddr_t receiver, uint8_t outbound_ed)
 }
 
 /* add entries to local signal map to build the inital signal map 
- * Note that inbound_gain is assumed to be INVALID_GAIN.
+ * Note that inbound_ed is assumed to be INVALID_ED.
 */
+
+// TO DO: deal with the INVALID_ED
 void updateInboundED(linkaddr_t sender, uint8_t inbound_ed)
 {
 	sm_entry_t* signal;
@@ -140,7 +143,7 @@ void updateInboundED(linkaddr_t sender, uint8_t inbound_ed)
 		{
 			signal->inbound_ed = inbound_ed;
 		} 
-	 // Resort the signal map
+	 	// Resort the signal map
 		sortSignalMap(sm_index);
 	} 
 	else 
@@ -452,6 +455,7 @@ void prepareSMSegment(uint8_t *ptr)
 {
 	memcpy(ptr, &(signalMap[sm_sending_index].neighbor), sizeof(linkaddr_t));
 	ptr += sizeof(linkaddr_t);
+	// inbound_eds are all valid
 	memcpy(ptr, &(signalMap[sm_sending_index].inbound_ed), sizeof(uint8_t));
 	ptr += sizeof(uint8_t);
 	memcpy(ptr, &(signalMap[sm_sending_index].outbound_ed), sizeof(uint8_t));
