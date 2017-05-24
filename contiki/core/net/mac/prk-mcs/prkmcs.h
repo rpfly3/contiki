@@ -55,14 +55,15 @@ enum
 	INVALID_POWER_LEVEL       = 0xFF,
 	INVALID_ED				  = -1,
 
-	ER_SEGMENT_LENGTH         = 4,
+	ER_SEGMENT_LENGTH         = 3,
 	SM_SEGMENT_LENGTH         = 3,
 
-	MAX_ER_SEG_NUM = 30,
+	MAX_ER_SEG_NUM = 39,
 
 	CCA_MAX_BACK_OFF_TIME     = 1000,
 };
-
+// MPDU length = 127 - 1 - 2 = 124
+// MPRK length = 124 - 5 or 6 = 118 or 119 
 /*
 Packet format
 -----------------------------------------------------------------
@@ -71,10 +72,10 @@ Packet format
 ER segment format
 ------------------------------------
 | Link Index | ER Version | I Edge |
-----1 byte-------2 byte-----1 byte--
+----1 byte-------1 byte-----1 byte--
 SM segment format
 ---------------------------------------------------
-| Neighbor | Inbound Gain | Outbound Gain |
+| Neighbor | Inbound ED | Outbound ED |
 ---1 byte-----1 bytes---------1 bytes-----
 */
 

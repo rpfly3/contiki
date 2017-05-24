@@ -4,6 +4,12 @@
  * @Description: controller input: current link PDR; controller output: \delata I;
  */
 
+
+/*
+ * TODO: 1. change ER version from uint16_t to uint8_t
+ * 2. add data channel agreement in control packet
+ * 3. add ER info share control (check xiaohui's code)
+*/
 #include "core/net/mac/prk-mcs/prkmcs.h"
 
 /* used to compute 1/a(t)*/
@@ -139,8 +145,7 @@ static float deltaIdB2mW(uint8_t pdr_index, float deltaI_dB)
 	else
 	{
 		uint8_t link_pdr = pdrTable[pdr_index].pdr;
-		float sinr = PDR_SINR[link_pdr];
-		current_I_dBm = tx_power - sinr;
+		current_I_dBm = tx_power - PDR_SINR[link_pdr];
 		current_I_mW = dbm2mW(current_I_dBm);
 	}
 
@@ -209,6 +214,16 @@ void updateER(uint8_t pdr_index)
 		localLinkERTable[local_link_er_index].I_edge = signalMap[i].inbound_ed;
 		localLinkERTable[local_link_er_index].er_version += 1;
 
+		// er version overflow warning
+		if(localLinkERTable[local_link_er_index].er_version == 255)
+		{
+			log_error("ER version will overflow soon");
+		}
+		else
+		{
+			// do nothing
+		}
+
 		// delay update or quick update (er_sending_index = 0) ???
 		updateConflictGraphForLocalERChange(local_link_er_index);
 		//deltaI_mW *= 1000000;
@@ -219,7 +234,7 @@ void updateER(uint8_t pdr_index)
 }
 
 /* sender update local er by receiving er from receiver */
-void updateLocalER(uint8_t local_link_er_index, uint16_t er_version, int8_t I_edge)
+void updateLocalER(uint8_t local_link_er_index, uint8_t er_version, int8_t I_edge)
 {
 	if (er_version > localLinkERTable[local_link_er_index].er_version)
 	{
@@ -243,8 +258,8 @@ bool prepareLocalERSegment(uint8_t *ptr)
 	{
 		memcpy(ptr, &(localLinkERTable[local_er_sending_index].link_index), sizeof(uint8_t));
 		ptr += sizeof(uint8_t);
-		memcpy(ptr, &(localLinkERTable[local_er_sending_index].er_version), sizeof(uint16_t));
-		ptr += sizeof(uint16_t);
+		memcpy(ptr, &(localLinkERTable[local_er_sending_index].er_version), sizeof(uint8_t));
+		ptr += sizeof(uint8_t);
 		memcpy(ptr, &(localLinkERTable[local_er_sending_index].I_edge), sizeof(int8_t));
 		ptr += sizeof(int8_t);
 
@@ -264,9 +279,9 @@ void er_receive(uint8_t *ptr)
 	uint8_t link_index;
 	memcpy(&link_index, ptr, sizeof(uint8_t));
 	ptr += sizeof(uint8_t);
-	uint16_t er_version;
-	memcpy(&er_version, ptr, sizeof(uint16_t));
-	ptr += sizeof(uint16_t);
+	uint8_t er_version;
+	memcpy(&er_version, ptr, sizeof(uint8_t));
+	ptr += sizeof(uint8_t);
 	int8_t I_edge;
 	memcpy(&I_edge, ptr, sizeof(int8_t));
 	ptr += sizeof(int8_t);

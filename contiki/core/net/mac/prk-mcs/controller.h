@@ -11,7 +11,6 @@ enum
 	LOCAL_LINK_ER_TABLE_SIZE = 40,
 	LINK_ER_TABLE_SIZE = 150,
 	INVALID_DBM = 0xff,
-	INVALID_ER_VERSION = 0xffff,
 };
 
 /* local link ER table entry */
@@ -25,7 +24,7 @@ typedef struct {
 	/* PDR requirement */
 	uint8_t pdr_req;
     /* ER version of the receiver */
-    uint16_t er_version;
+    uint8_t er_version;
 	/* signal map index defining the ER boundary */
 	uint8_t sm_index;
     /* use the I_edge (in ED) to indicate the ER boundary */
