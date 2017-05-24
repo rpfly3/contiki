@@ -65,6 +65,11 @@ enum
 // MPDU length = 127 - 1 - 2 = 124
 // MPRK length = 124 - 5 or 6 = 118 or 119 
 /*
+New Packet format
+-----------------------------------------------------------------
+| Type | Receiver | Sender | Seq No | Channel | # of ER Seg | ER Segments |
+-1 byte---1 byte----1 byte---2 byte---1 byte------1 byte -----------------
+
 Packet format
 -----------------------------------------------------------------
 | Type | Receiver | Sender | Seq No | # of ER Seg | ER Segments |

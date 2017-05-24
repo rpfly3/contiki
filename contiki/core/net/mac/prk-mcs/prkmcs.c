@@ -58,10 +58,14 @@ void prkmcs_send_ctrl()
 	buf_ptr += FCF;
 	memcpy(buf_ptr, &data_type, sizeof(uint8_t));
 	buf_ptr += sizeof(uint8_t);
+	memcpy(buf_ptr, &pair_addr, sizeof(linkaddr_t));
+	buf_ptr += sizeof(linkaddr_t);
 	memcpy(buf_ptr, &node_addr, sizeof(linkaddr_t));
 	buf_ptr += sizeof(linkaddr_t);
 	memcpy(buf_ptr, &prkmcs_control_packet_seq_no, sizeof(uint16_t));
 	buf_ptr += sizeof(uint16_t);
+	memcpy(buf_ptr, &data_channel, sizeof(uint8_t));
+	buf_ptr += sizeof(uint8_t);
 	num_er = buf_ptr;
 	buf_ptr += sizeof(uint8_t);
 
@@ -200,17 +204,29 @@ void prkmcs_receive()
 	}
 	else if (data_type == CONTROL_PACKET)
 	{
-		linkaddr_t sender;
+		linkaddr_t sender, receiver;
 		uint16_t packet_seq_no;
-		uint8_t num_er;
+		uint8_t num_er, received_channel;
 
+		memcpy(&receiver, buf_ptr, sizeof(linkaddr_t));
+		buf_ptr += sizeof(linkaddr_t);
 		memcpy(&sender, buf_ptr, sizeof(linkaddr_t));
 		buf_ptr += sizeof(linkaddr_t);
-
 		memcpy(&packet_seq_no, buf_ptr, sizeof(uint16_t));
 		buf_ptr += sizeof(uint16_t);
+		memcpy(&received_channel, buf_ptr, sizeof(uint8_t));
+		buf_ptr += sizeof(uint8_t);
 		memcpy(&num_er, buf_ptr, sizeof(uint8_t));
 		buf_ptr += sizeof(uint8_t);
+
+		if(receiver == node_addr)
+		{
+			data_channel = received_channel;
+		}
+		else
+		{
+			// do nothing
+		}	
 		
 		printf("Received Control %u from %u: rx ed %d\r\n", packet_seq_no, sender, rx_ed);
 

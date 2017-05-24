@@ -7,7 +7,7 @@
 
 /*
  * TODO: 1. change ER version from uint16_t to uint8_t
- * 2. add data channel agreement in control packet
+ * 2. add data channel agreement in control packet or at the beginning of data subslot
  * 3. add ER info share control (check xiaohui's code)
 */
 #include "core/net/mac/prk-mcs/prkmcs.h"

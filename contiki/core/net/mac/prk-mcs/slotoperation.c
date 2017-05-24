@@ -73,14 +73,32 @@ static void signalmap_signaling(uint8_t node_index)
 		start_rx();
 	}
 }
-
+// for now this one wont' work for multichannel 
 static void prkmcs_control_signaling(uint8_t node_index)
 {
-	wait_us(rand() % CCA_MAX_BACK_OFF_TIME);
-	bool idle_channel = getCCA(RF231_CCA_0, 0);
-	if (idle_channel)
+
+	runLama(current_asn);
+	if(data_channel != INVALID_CHANNEL)
 	{
-		ctimer_set(&send_timer, 500, prkmcs_send_ctrl, NULL);
+		if(is_receiver)
+		{
+			wait_us(rand() % CCA_MAX_BACK_OFF_TIME);
+			bool idle_channel = getCCA(RF231_CCA_0, 0);
+			if (idle_channel)
+			{
+				ctimer_set(&send_timer, 500, prkmcs_send_ctrl, NULL);
+			}
+			else
+			{
+				start_rx();
+			
+			}	
+		}
+		else
+		{
+			data_channel = INVALID_CHANNEL;
+			start_rx();
+		}
 	}
 	else
 	{
@@ -100,7 +118,6 @@ static void prkmcs_control_signaling(uint8_t node_index)
 
 static void prkmcs_data_scheduling()
 {
-	runLama(current_asn);
 	if (data_channel != INVALID_CHANNEL)
 	{
 		if (!is_receiver)
