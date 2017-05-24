@@ -27,10 +27,15 @@ void time_synch_send()
 	{
 		prkmcs_is_synchronized = 1;
 	}
+	else
+	{
+		// do nothing
+	}
 
 	log_debug("TS packet %u", time_synch_no);
-	++time_synch_no;	
+	time_synch_no += 1;	
 }
+
 process_event_t	heart_beat;
 PROCESS_THREAD(heart_beat_process, ev, data)
 {

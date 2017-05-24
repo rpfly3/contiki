@@ -30,6 +30,10 @@ uint8_t findSignalMapIndex(linkaddr_t neighbor)
             index = i;
 	        break;
         }
+		else
+		{
+			// do nothing
+		}
     }
 	return index;
 }
@@ -289,7 +293,7 @@ float ed2dBm(int8_t ed)
 	}
 	else
 	{
-		log_error("Invalid DBM");
+		log_error("Invalid ED value");
 	}
 	return dbm;
 }

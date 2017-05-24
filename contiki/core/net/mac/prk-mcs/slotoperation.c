@@ -239,7 +239,7 @@ static void synch_slot_operation(struct rtimer* st, void* ptr)
 	}
 	else
 	{
-		uint8_t duty_cicle = current_asn.ls4b % TIME_SYNCH_FREQUENCY;	
+		duty_cicle = current_asn.ls4b % TIME_SYNCH_FREQUENCY;	
 		if (duty_cicle == 0)
 		{
 			ctimer_set(&send_timer, 500, time_synch_send, NULL);

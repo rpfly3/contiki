@@ -26,30 +26,30 @@ link_t activeLinks[] = {{4, 19}, {6, 20}, {6, 22}, {7, 22}, {8, 38}, {8, 9}, {9,
 {125, 126}, {126, 99}, {126, 125}, {126, 128}, {127, 99}, {127, 100}, {127, 122}, {127, 126}, {127, 129}, {126, 99}
 };
 
-linkaddr_t activeNodes[] = { 9, 8, 24, 40, 39, 38, 55, 53, 70, 69, 68, 85, 84, 83, 100, 99, 98, 128, 126, 124, 129, 127, 125, 123, 122, 97, 
-82, 52, 37, 22, 7, 6, 4, 21, 20, 19, 36, 35, 34, 51, 50, 49, 65, 64, 79, 80, 81, 94, 95, 96, 112, 63, 62, 61, 113, 107, 78, 77, 76, 114, 108, 92, 115, 109};
+linkaddr_t activeNodes[] = { 4, 6, 7, 8, 9, 19, 20, 21, 22, 24, 34, 35, 36, 37, 38, 39, 40, 49, 50, 51, 52, 53, 55, 61, 62, 63, 64, 65, 68, 69, 70, 76, 
+77, 78, 79, 80, 81, 82, 83, 84, 85, 92, 94, 95, 96, 97, 98, 99, 100, 107, 108, 109, 112, 113, 114, 115, 122, 123, 124, 125, 126, 127, 128, 129};
 */
 /*
 link_t activeLinks[] = {{4, 19}, {6, 20}, {7, 22}, {8, 38}, {21, 52}, {24, 39}, {34, 49}, {35, 36}, {50, 51}, {61, 77}, {64, 79}, {65, 80}, {69, 55}, 
 {78, 62}, {82, 97}, {83, 70}, {85, 84}, {96, 95}, {100, 128}, {107, 108}, {113, 112}, {115, 114}, {125, 124}, {127, 129}, {126, 99},
 };
 */
-link_t activeLinks[] = {{4, 19}, {6, 20}, {7, 22}, {22, 7}, {8, 38}, {21, 52}, {52, 21}, {24, 39}, {34, 49}, {49, 34}, {35, 36}, {36, 35}, {50, 51}, {51, 50}, 
-{61, 77}, {77, 61}, {64, 79}, {65, 80}, {69, 55}, {78, 62}, {82, 97}, {83, 70}, {70, 83}, {85, 84}, {96, 95}, {95, 96}, {100, 128}, {107, 108}, {113, 112}, 
-{115, 114}, {125, 124}, {127, 129}, {126, 99},
+link_t activeLinks[] = {{4, 19}, {19, 4}, {6, 20}, {20, 6}, {7, 22}, {22, 7}, {8, 38}, {21, 52}, {52, 21}, {24, 39}, {34, 49}, {49, 34}, {35, 36}, 
+{36, 35}, {50, 51}, {51, 50}, {61, 77}, {77, 61}, {64, 79}, {65, 80}, {69, 55}, {78, 62}, {82, 97}, {83, 70}, {70, 83}, {85, 84}, {96, 95}, 
+{95, 96}, {100, 128}, {107, 108}, {113, 112}, {115, 114}, {125, 124}, {127, 129}, {126, 99},
 };
 linkaddr_t activeNodes[] = {4, 6, 7, 8, 19, 20, 21, 22, 24, 34, 35, 36, 38, 39, 49, 50, 51, 52, 55, 61, 62, 64, 65, 69, 70, 77, 78, 79, 80, 82, 
 83, 84, 85, 95, 96, 97, 99, 100, 107, 108, 112, 113, 114, 115, 124, 125, 126, 127, 128, 129};
+
 uint8_t activeLinksSize = sizeof(activeLinks) / sizeof(activeLinks[0]);
 uint8_t activeNodesSize = sizeof(activeNodes) / sizeof(activeNodes[0]);
 
 /* local active links table storing the index (in activeLinks table) of links adjoint at this node */
 uint8_t localLinks[LOCAL_LINKS_SIZE];
-uint8_t localLinksSize;
+uint8_t localLinksSize = 0;
 
 void topologyInit()
 {
-	localLinksSize = 0;
 	for (uint8_t i = 0; i < activeLinksSize; ++i)
 	{
 		if (localLinksSize < LOCAL_LINKS_SIZE)
@@ -68,13 +68,14 @@ void topologyInit()
 		{
 			do
 			{
-				log_error("Local links table is full");
+				log_error("Local links table is too small");
 			} while (1);
 		}
 	}
+	return;
 }
 
-/* find and return the link index */
+/* find link index globally */
 uint8_t findLinkIndex(linkaddr_t sender, linkaddr_t receiver) 
 {
 	uint8_t link_index = INVALID_INDEX;
@@ -85,19 +86,27 @@ uint8_t findLinkIndex(linkaddr_t sender, linkaddr_t receiver)
             link_index = i;
 	        break;
         }
+		else
+		{
+			// do nothing
+		}
     }
     return link_index;
 }
 
-/* find and return the index of link adjoint at this node */
+/* find link index locally*/
 uint8_t findLinkIndexForLocal(linkaddr_t sender, linkaddr_t receiver)
 {
 	uint8_t link_index = INVALID_INDEX;
-	for (uint8_t i = 0; i < localLinksSize; i++)
+	for (uint8_t i = 0; i < localLinksSize; ++i)
 	{
 		if (activeLinks[localLinks[i]].sender == sender && activeLinks[localLinks[i]].receiver == receiver)
 		{
 			link_index = localLinks[i];
+		}
+		else
+		{
+			// do nothing
 		}
 	}
 	return link_index;
@@ -112,6 +121,10 @@ uint8_t findLocalIndex(uint8_t link_index)
 		if (localLinks[i] == link_index)
 		{
 			local_index = i;
+		}
+		else
+		{
+			// do nothing
 		}
 	}
 	return local_index;

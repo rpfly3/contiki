@@ -209,7 +209,7 @@ void updateER(uint8_t pdr_index)
 		localLinkERTable[local_link_er_index].I_edge = signalMap[i].inbound_ed;
 		localLinkERTable[local_link_er_index].er_version += 1;
 
-		// delay update ???
+		// delay update or quick update (er_sending_index = 0) ???
 		updateConflictGraphForLocalERChange(local_link_er_index);
 		//deltaI_mW *= 1000000;
 		//printf("SM index %u, SM size %u, scaled deltaI_mW %f\r\n", i, valid_sm_entry_size, deltaI_mW);
