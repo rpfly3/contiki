@@ -6,6 +6,7 @@ struct asn_t current_asn; //absolute slot number
 volatile rtimer_clock_t current_slot_start;
 uint8_t is_receiver, my_link_index, prkmcs_is_synchronized;
 uint8_t control_channel = RF231_CHANNEL_26, data_channel;
+bool schedule_acked;
 
 static void signalmap_slot_operation(struct rtimer *st, void *ptr);
 static void prkmcs_slot_operation(struct rtimer *st, void *ptr);
@@ -100,13 +101,13 @@ static void prkmcs_control_signaling(uint8_t node_index)
 }
 static void prkmcs_data_action()
 {
-	if(data_channel != INVALID_CHANNEL)
+	if(schedule_acked)
 	{
 		prkmcs_send_data();	
 	}
 	else
 	{
-		// do nothing
+		log_debug("Not scheduled by LAMA");
 	}
 }
 
@@ -121,11 +122,10 @@ static void prkmcs_data_scheduling()
 		}
 		else
 		{
+			schedule_acked = false;
 			start_rx();
 			ctimer_set(&send_timer, 1000, prkmcs_data_action, NULL);
 		}
-		// the scheduling info is not the real one, which depends on the negotiation of sender and receiver
-		log_debug("Link index %u channel %u node %u", my_link_index, data_channel, node_addr);
 	}
 	else
 	{

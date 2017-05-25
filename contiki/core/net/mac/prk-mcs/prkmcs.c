@@ -281,11 +281,12 @@ void prkmcs_receive()
 		buf_ptr += sizeof(linkaddr_t);
 		if(receiver == node_addr && sender == pair_addr)
 		{
-			// do nothing
+			schedule_acked = true;
+			printf("[SCHEDULING INFO] Link index %u channel %u node %u\r\n", my_link_index, data_channel, node_addr);
 		}
 		else
 		{
-			data_channel == INVALID_CHANNEL;
+			// do nothing
 		}
 	}
 	return;
@@ -307,5 +308,6 @@ void prkmcs_schedule_ack()
 	rf231_tx_buffer_size = buf_ptr - rf231_tx_buffer + CHECKSUM_LEN;
 
 	rf231_send();
+	printf("[SCHEDULING INFO] Link index %u channel %u node %u\r\n", my_link_index, data_channel, node_addr);
 	return;
 }

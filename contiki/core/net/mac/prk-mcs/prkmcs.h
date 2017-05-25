@@ -105,6 +105,7 @@ extern uint8_t is_receiver, my_link_index, prkmcs_is_synchronized;
 
 /* channel selection info defined in onama module */
 extern uint8_t data_channel, control_channel;
+extern bool schedule_acked;
 
 /* a ringbuf storing incoming packets */
 extern uint8_t rf231_rx_buffer_head, rf231_rx_buffer_tail;
