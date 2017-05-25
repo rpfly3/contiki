@@ -74,7 +74,7 @@ static void signalmap_signaling(uint8_t node_index)
 		start_rx();
 	}
 }
-// for now this one wont' work for multichannel 
+
 static void prkmcs_control_signaling(uint8_t node_index)
 {
 	wait_us(rand() % CCA_MAX_BACK_OFF_TIME);
@@ -107,6 +107,7 @@ static void prkmcs_data_action()
 	}
 	else
 	{
+		SetChannel(control_channel);
 		log_debug("Not scheduled by LAMA");
 	}
 }
@@ -116,6 +117,7 @@ static void prkmcs_data_scheduling()
 	runLama(current_asn);
 	if (data_channel != INVALID_CHANNEL)
 	{
+		SetChannel(data_channel);
 		if (is_receiver)
 		{
 			ctimer_set(&ack_timer, 500, prkmcs_schedule_ack, NULL);
@@ -129,6 +131,7 @@ static void prkmcs_data_scheduling()
 	}
 	else
 	{
+		SetChannel(control_channel);
 		log_debug("Not scheduled by LAMA");
 	}
 }
@@ -174,6 +177,7 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 
 		if (current_asn.ls4b <= BUILD_SIGNALMAP_PERIOD)
 		{
+			SetChannel(control_channel);
 			if (duty_cicle == 0)
 			{
 				start_rx();
@@ -210,6 +214,7 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 		{
 			if (duty_cicle == 0)
 			{
+				SetChannel(control_channel);
 				start_rx();
 				/*
 				printf("Conflict link set size: \r\n");
@@ -221,6 +226,7 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 			}
 			else if (duty_cicle == 1)
 			{
+				SetChannel(control_channel);
 				node_index = ((current_asn.ls4b / TIME_SYNCH_FREQUENCY) * 2 + 0) % activeNodesSize;
 				prkmcs_control_signaling(node_index);
 			}
@@ -230,6 +236,7 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 			}
 			else if (duty_cicle == 3)
 			{
+				SetChannel(control_channel);
 				node_index = ((current_asn.ls4b / TIME_SYNCH_FREQUENCY) * 2 + 1) % activeNodesSize;
 				prkmcs_control_signaling(node_index);
 			}
@@ -241,6 +248,7 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 	}
 	else
 	{
+		SetChannel(control_channel);
 		start_rx();
 	}
 

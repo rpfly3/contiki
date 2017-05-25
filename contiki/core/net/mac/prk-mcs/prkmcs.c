@@ -35,7 +35,16 @@ void prkmcsInit(void)
 		}
 
 		tx_power = powerLevel2dBm(DATA_POWER);
-		SetChannel(RF231_CHANNEL_26);
+
+		if(node_addr == BASE_STATION_ID)
+		{
+			SetChannel(control_channel);
+		}
+		else
+		{
+			// do nothing
+		}
+		
 		prkmcs_slot_operation_start();
 		log_info("PRKMCS is enabled");
 	}
