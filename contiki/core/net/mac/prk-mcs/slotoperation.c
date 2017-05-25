@@ -1,6 +1,6 @@
 #include "core/net/mac/prk-mcs/prkmcs.h"
 
-static struct ctimer send_timer;
+static struct ctimer send_timer, ack_timer;
 
 struct asn_t current_asn; //absolute slot number
 volatile rtimer_clock_t current_slot_start;
@@ -76,34 +76,17 @@ static void signalmap_signaling(uint8_t node_index)
 // for now this one wont' work for multichannel 
 static void prkmcs_control_signaling(uint8_t node_index)
 {
-
-	runLama(current_asn);
-	if(data_channel != INVALID_CHANNEL)
+	wait_us(rand() % CCA_MAX_BACK_OFF_TIME);
+	bool idle_channel = getCCA(RF231_CCA_0, 0);
+	if (idle_channel)
 	{
-		if(is_receiver)
-		{
-			wait_us(rand() % CCA_MAX_BACK_OFF_TIME);
-			bool idle_channel = getCCA(RF231_CCA_0, 0);
-			if (idle_channel)
-			{
-				ctimer_set(&send_timer, 500, prkmcs_send_ctrl, NULL);
-			}
-			else
-			{
-				start_rx();
-			
-			}	
-		}
-		else
-		{
-			data_channel = INVALID_CHANNEL;
-			start_rx();
-		}
+		ctimer_set(&send_timer, 500, prkmcs_send_ctrl, NULL);
 	}
 	else
 	{
 		start_rx();
-	}
+	
+	}	
 	/*
 	if (node_addr == activeNodes[node_index])
 	{
@@ -115,19 +98,33 @@ static void prkmcs_control_signaling(uint8_t node_index)
 	}
 	*/
 }
+static void prkmcs_data_action()
+{
+	if(data_channel != INVALID_CHANNEL)
+	{
+		prkmcs_send_data();	
+	}
+	else
+	{
+		// do nothing
+	}
+}
 
 static void prkmcs_data_scheduling()
 {
+	runLama(current_asn);
 	if (data_channel != INVALID_CHANNEL)
 	{
-		if (!is_receiver)
+		if (is_receiver)
 		{
-			ctimer_set(&send_timer, 500, prkmcs_send_data, NULL);
+			ctimer_set(&ack_timer, 500, prkmcs_schedule_ack, NULL);
 		}
 		else
 		{
 			start_rx();
+			ctimer_set(&send_timer, 1000, prkmcs_data_action, NULL);
 		}
+		// the scheduling info is not the real one, which depends on the negotiation of sender and receiver
 		log_debug("Link index %u channel %u node %u", my_link_index, data_channel, node_addr);
 	}
 	else
@@ -203,20 +200,24 @@ static void prkmcs_slot_operation(struct rtimer *st, void *ptr)
 			}
 		
 		}
+		/*
 		else if(current_asn.ls4b == BUILD_SIGNALMAP_PERIOD + 1)
 		{
 			showSM();
 		}
+		*/
 		else
 		{
 			if (duty_cicle == 0)
 			{
 				start_rx();
+				/*
 				printf("Conflict link set size: \r\n");
 				for(uint8_t i = 0; i < local_link_er_size; ++i)
 				{
 					printf("Local Link %u, size %u \r\n", localLinkERTable[i].link_index, conflict_set_size[i]);
 				}
+				*/
 			}
 			else if (duty_cicle == 1)
 			{

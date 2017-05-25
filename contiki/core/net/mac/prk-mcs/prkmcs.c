@@ -270,5 +270,42 @@ void prkmcs_receive()
 			// do nothing
 		}
 	}
+	else if (data_type == SCHEDULE_ACK)
+	{
+		linkaddr_t receiver;
+		memcpy(&receiver, buf_ptr, sizeof(linkaddr_t));
+		buf_ptr += sizeof(linkaddr_t);
+
+		linkaddr_t sender;
+		memcpy(&sender, buf_ptr, sizeof(linkaddr_t));
+		buf_ptr += sizeof(linkaddr_t);
+		if(receiver == node_addr && sender == pair_addr)
+		{
+			// do nothing
+		}
+		else
+		{
+			data_channel == INVALID_CHANNEL;
+		}
+	}
+	return;
+}
+
+void prkmcs_schedule_ack()
+{
+	SetPower(RF231_TX_PWR_MIN);
+	uint8_t *buf_ptr = rf231_tx_buffer;
+	uint8_t data_type = SCHEDULE_ACK;
+	buf_ptr += FCF;
+	memcpy(buf_ptr, &data_type, sizeof(uint8_t));
+	buf_ptr += sizeof(uint8_t);
+	memcpy(buf_ptr, &pair_addr, sizeof(uint8_t));
+	buf_ptr += sizeof(linkaddr_t);
+	memcpy(buf_ptr, &node_addr, sizeof(linkaddr_t));
+	buf_ptr += sizeof(linkaddr_t);
+
+	rf231_tx_buffer_size = buf_ptr - rf231_tx_buffer + CHECKSUM_LEN;
+
+	rf231_send();
 	return;
 }

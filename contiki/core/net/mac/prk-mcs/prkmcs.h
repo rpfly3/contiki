@@ -35,6 +35,7 @@ enum
 	CONTROL_PACKET    = 5,
 	TIME_SYNCH_BEACON = 6,
 	TEST_PACKET       = 9,
+	SCHEDULE_ACK	  = 13,
 };
 
 /* the unit is us because the rtimer graduality is us */
@@ -140,5 +141,6 @@ extern float tx_power;
 void prkmcsInit();
 void prkmcs_send_ctrl();
 void prkmcs_send_data();
+void prkmcs_schedule_ack();
 void prkmcs_receive();
 #endif /* __PRKMCS_H__ */
