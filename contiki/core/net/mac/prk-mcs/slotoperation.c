@@ -118,6 +118,7 @@ static void prkmcs_data_scheduling()
 	if (data_channel != INVALID_CHANNEL)
 	{
 		SetChannel(data_channel);
+		/*
 		if (is_receiver)
 		{
 			start_rx();
@@ -127,9 +128,10 @@ static void prkmcs_data_scheduling()
 			ctimer_set(&send_timer, 500, prkmcs_send_data, NULL);
 		}
 		printf("[SCHEDULING INFO] Link index %u channel %u node %u\r\n", my_link_index, data_channel, node_addr);
-		/*
+		*/
 		if (is_receiver)
 		{
+			wait_us(rand() % CCA_MAX_BACK_OFF_TIME);
 			ctimer_set(&ack_timer, 500, prkmcs_schedule_ack, NULL);
 		}
 		else
@@ -138,7 +140,6 @@ static void prkmcs_data_scheduling()
 			start_rx();
 			ctimer_set(&send_timer, 1000, prkmcs_data_action, NULL);
 		}
-		*/
 	}
 	else
 	{

@@ -9,6 +9,7 @@
 PROCESS_NAME(irq_clear_process);
 PROCESS_NAME(rx_process);
 PROCESS_NAME(heart_beat_process);
+PROCESS_NAME(install_latest_er_process);
 
 static uint16_t prkmcs_data_sequence_no[LOCAL_LINKS_SIZE];
 static uint16_t prkmcs_control_packet_seq_no = 1, prkmcs_data_packet_seq_no;
@@ -25,6 +26,7 @@ void prkmcsInit(void)
 	process_start(&irq_clear_process, NULL);
 	process_start(&rx_process, NULL);
 	process_start(&heart_beat_process, NULL);
+	process_start(&install_latest_er_process, NULL);
 
 	if (localLinksSize != 0 || node_addr == BASE_STATION_ID)
 	{

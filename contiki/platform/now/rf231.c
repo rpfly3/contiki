@@ -597,6 +597,7 @@ void time_synch_process()
 	}
 }
 
+
 PROCESS_THREAD(irq_clear_process, ev, data)
 {
 	PROCESS_BEGIN();

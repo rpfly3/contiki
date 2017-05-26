@@ -6,7 +6,7 @@
 
 enum
 {
-	PDR_REQUIREMENT = 70,
+	PDR_REQUIREMENT = 80,
 	E_0 = 4,
 	LOCAL_LINK_ER_TABLE_SIZE = 40,
 	LINK_ER_TABLE_SIZE = 150,
@@ -29,6 +29,12 @@ typedef struct {
 	uint8_t sm_index;
     /* use the I_edge (in ED) to indicate the ER boundary */
     int8_t I_edge;
+
+	/* version control */
+	uint8_t installed;
+	uint8_t updated_er_version;
+	uint8_t updated_sm_index;
+	int8_t updated_I_edge;
 } local_link_er_t;
 
 

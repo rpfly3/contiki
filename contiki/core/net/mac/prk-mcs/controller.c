@@ -36,6 +36,8 @@ local_link_er_t localLinkERTable[LOCAL_LINK_ER_TABLE_SIZE];
 uint8_t local_link_er_size = 0;
 uint8_t local_er_sending_index = 0;
 
+PROCESS(install_latest_er_process, "Install latest er process");
+process_event_t er_info_sent;
 /***************** Local Link ER Table Management ****************/
 
 void initController() 
@@ -67,6 +69,10 @@ void initController()
 		localLinkERTable[i].er_version = 0;
 		localLinkERTable[i].sm_index = INVALID_INDEX;
 		localLinkERTable[i].I_edge = INVALID_ED;
+		localLinkERTable[i].updated_er_version = 0;
+		localLinkERTable[i].updated_sm_index = INVALID_INDEX;
+		localLinkERTable[i].updated_I_edge = INVALID_ED;
+		localLinkERTable[i].installed = 1;
     }
 
 	return;
@@ -78,12 +84,17 @@ void initLocalLinkER(uint8_t local_link_er_index)
 	if (valid_sm_entry_size != 0)
 	{
 		uint8_t index = valid_sm_entry_size - 1;	
-
+/*
 		localLinkERTable[local_link_er_index].I_edge = signalMap[index].inbound_ed;
 		localLinkERTable[local_link_er_index].er_version = 1;
 		localLinkERTable[local_link_er_index].sm_index = index;
+*/
 
-		updateConflictGraphForLocalERChange(local_link_er_index);
+		localLinkERTable[local_link_er_index].updated_I_edge = signalMap[index].inbound_ed;
+		localLinkERTable[local_link_er_index].updated_er_version = 1;
+		localLinkERTable[local_link_er_index].updated_sm_index = index;
+		localLinkERTable[local_link_er_index].installed = 0;
+		//updateConflictGraphForLocalERChange(local_link_er_index);
 	}
 	else
 	{
@@ -130,6 +141,15 @@ static float pdr2DeltaIdB(uint8_t pdr_index, uint8_t local_link_er_index)
 	}
 	
 	float deltaI_dB = (ALPHA * link_pdr + (1 - ALPHA) * link_pdr_sample - link_pdr_req) * slope_inv / 100;
+
+	if(deltaI_dB > 7)
+	{
+		deltaI_dB = 7;
+	}
+	else
+	{
+		// do nothing
+	}
 	return deltaI_dB;
 }
 
@@ -209,13 +229,18 @@ void updateER(uint8_t pdr_index)
 				}
 			} while (fabs(totalI_mW) < fabs(deltaI_mW) && i > 0);
 		}
-	
+/*	
 		localLinkERTable[local_link_er_index].sm_index = i;
 		localLinkERTable[local_link_er_index].I_edge = signalMap[i].inbound_ed;
 		localLinkERTable[local_link_er_index].er_version += 1;
-
+*/
+		localLinkERTable[local_link_er_index].updated_sm_index = i;
+		localLinkERTable[local_link_er_index].updated_I_edge = signalMap[i].inbound_ed;
+		localLinkERTable[local_link_er_index].updated_er_version += 1;
+		localLinkERTable[i].installed = 0;
 		// er version overflow warning
-		if(localLinkERTable[local_link_er_index].er_version == 255)
+		//if(localLinkERTable[local_link_er_index].er_version == 255)
+		if(localLinkERTable[local_link_er_index].updated_er_version == 255)
 		{
 			log_error("ER version will overflow soon");
 		}
@@ -225,7 +250,7 @@ void updateER(uint8_t pdr_index)
 		}
 
 		// delay update or quick update (er_sending_index = 0) ???
-		updateConflictGraphForLocalERChange(local_link_er_index);
+		//updateConflictGraphForLocalERChange(local_link_er_index);
 		//deltaI_mW *= 1000000;
 		//printf("SM index %u, SM size %u, scaled deltaI_mW %f\r\n", i, valid_sm_entry_size, deltaI_mW);
 	}
@@ -250,11 +275,44 @@ void updateLocalER(uint8_t local_link_er_index, uint8_t er_version, int8_t I_edg
 	return;
 }
 
+void installLatestLocalER()
+{
+	for(uint8_t i = 0; i < local_link_er_size; ++i)
+	{
+		if(localLinkERTable[i].installed == 0)
+		{
+			localLinkERTable[i].er_version = localLinkERTable[i].updated_er_version;
+			localLinkERTable[i].sm_index = localLinkERTable[i].updated_sm_index;
+			localLinkERTable[i].I_edge = localLinkERTable[i].updated_I_edge;
+			localLinkERTable[i].installed = 1;
+			
+			updateConflictGraphForLocalERChange(i);
+		}
+		else
+		{
+			// do nothing
+		}
+	}
+}
+
 /* prepare local ER info for sending */
 bool prepareLocalERSegment(uint8_t *ptr)
 {
 	bool prepared = false;
-	if (localLinkERTable[local_er_sending_index].er_version > 0)
+	if(localLinkERTable[local_er_sending_index].updated_er_version > 0)
+	{
+		memcpy(ptr, &(localLinkERTable[local_er_sending_index].link_index), sizeof(uint8_t));
+		ptr += sizeof(uint8_t);
+		memcpy(ptr, &(localLinkERTable[local_er_sending_index].updated_er_version), sizeof(uint8_t));
+		ptr += sizeof(uint8_t);
+		memcpy(ptr, &(localLinkERTable[local_er_sending_index].updated_I_edge), sizeof(int8_t));
+		ptr += sizeof(int8_t);
+		prepared = true;
+
+		process_post(&install_latest_er_process, er_info_sent, NULL);
+	}
+	/*
+	else if (localLinkERTable[local_er_sending_index].er_version > 0)
 	{
 		memcpy(ptr, &(localLinkERTable[local_er_sending_index].link_index), sizeof(uint8_t));
 		ptr += sizeof(uint8_t);
@@ -262,9 +320,10 @@ bool prepareLocalERSegment(uint8_t *ptr)
 		ptr += sizeof(uint8_t);
 		memcpy(ptr, &(localLinkERTable[local_er_sending_index].I_edge), sizeof(int8_t));
 		ptr += sizeof(int8_t);
-
+		
 		prepared = true;
 	}
+	*/
 	else
 	{
 		// do nothing
@@ -273,7 +332,7 @@ bool prepareLocalERSegment(uint8_t *ptr)
 	return prepared;
 }
 
-
+// add version control according to version control
 void er_receive(uint8_t *ptr)
 {
 	uint8_t link_index;
@@ -311,4 +370,15 @@ void er_receive(uint8_t *ptr)
 		log_error("Received invalid link index");
 	}
 	return;
+}
+
+PROCESS_THREAD(install_latest_er_process, ev, data)
+{
+	PROCESS_BEGIN();
+	while (1) 
+	{
+		PROCESS_WAIT_EVENT_UNTIL(ev == er_info_sent);
+		installLatestLocalER();
+	}
+	PROCESS_END();
 }
