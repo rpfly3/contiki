@@ -12,19 +12,20 @@
 */
 #include "core/net/mac/prk-mcs/prkmcs.h"
 
-/* used to compute 1/a(t)*/
+/*
+// used to compute 1/a(t)
 float PDR_SLOPE_TABLE[] = {840.5, 19.3, 11.4, 8.5, 7.0, 6.1, 5.4, 4.9, 4.5, 4.2, 4.0, 3.8, 3.6, 3.5, 3.4, 3.3, 3.1, 3.1, 3.0, 2.9, 2.9, 
 	2.8, 2.8, 2.8, 2.7, 2.7, 2.7, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.5, 2.5, 2.5, 2.5, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.6, 2.7, 
 	2.7, 2.7, 2.7, 2.8, 2.8, 2.8, 2.9, 2.9, 2.9, 3.0, 3.0, 3.1, 3.1, 3.2, 3.3, 3.3, 3.4, 3.5, 3.5, 3.6, 3.7, 3.8, 3.9, 4.0, 4.1, 4.3, 4.4, 4.6, 
 	4.7, 4.9, 5.1, 5.3, 5.6, 5.8, 6.1, 6.5, 6.9, 7.3, 7.8, 8.4, 9.2, 10.0, 11.1, 12.5, 14.1, 16.4, 19.6, 24.3, 32.3, 619.7, 1233.2, 3429.6};
 
-/* used to compute 1/a_{0} using PDR*/
+// used to compute 1/a_{0} using PDR
 float PDR_INV_TABLE[] = {0, 0.36, 0.51, 0.61, 0.69, 0.75, 0.81, 0.86, 0.91, 0.95, 0.99, 1.03, 107, 1.11, 1.14, 1.17, 1.21, 1.24, 1.27, 
 	1.30, 1.33, 1.36, 1.38, 1.41, 1.44, 1.47, 1.49, 1.52, 1.55, 1.57, 1.60, 1.62, 1.65, 1.67, 1.70, 1.73, 1.75, 1.78, 1.80, 1.83, 
 	1.85, 1.88, 1.90, 1.93, 1.96, 1.98, 2.01, 2.03, 2.06, 2.09, 2.11, 2.14, 2.17, 2.20, 2.23, 2.25, 2.28, 2.31, 2.34, 2.37, 2.40, 
 	2.43, 2.46, 2.50, 2.53, 2.56, 2.60, 2.63, 2.67, 2.70, 2.74, 2.78, 2.82, 2.86, 2.90, 2.94, 2.99, 3.03, 3.08, 3.13, 3.18, 3.24, 
 	3.29, 3.35, 3.42, 3.48, 3.55, 3.63, 3.71, 3.80, 3.89, 4.00, 4.12, 4.25, 4.40, 4.58, 4.79, 5.07, 7.53, 16.09, 28.71};
-
+*/
 /* used to compute current interference level when this information is not available from sampling */
 float PDR_SINR[] = {0, 0.37427, 0.51427, 0.61427, 0.69427, 0.76427, 0.82427, 0.87427, 0.91427, 0.96427, 1.0043, 1.0443, 1.0843, 1.1143, 1.1543, 1.1843, 1.2143, 1.2443,
 1.2743, 1.3043, 1.3343, 1.3643, 1.3943, 1.4243, 1.4443, 1.4743, 1.5043, 1.5243, 1.5543, 1.5843, 1.6043, 1.6343, 1.6543, 1.6843, 1.7043, 1.7343, 1.7643, 1.7843, 1.8143,
@@ -126,30 +127,27 @@ uint8_t findLocalLinkERTableIndex(uint8_t link_index) {
 /* compute the delta I for link with @sender; note that this task is executed only by receiver */
 static float pdr2DeltaIdB(uint8_t pdr_index, uint8_t local_link_er_index) 
 {
-	float slope_inv;
+	float slope;
 	uint8_t link_pdr = pdrTable[pdr_index].pdr;
 	uint8_t link_pdr_sample = pdrTable[pdr_index].pdr_sample;
 	uint8_t link_pdr_req = localLinkERTable[local_link_er_index].pdr_req;
 	
 	if (abs(link_pdr - link_pdr_req) > E_0)
 	{
-		slope_inv = (PDR_INV_TABLE[link_pdr_req] - PDR_INV_TABLE[link_pdr]) / (link_pdr_req - link_pdr);
+		float deltaPDR = (link_pdr_req - link_pdr) / 100.0;
+		float deltaSINR = PDR_SINR[link_pdr_req] - PDR_SINR[link_pdr];
+		slope = deltaPDR / deltaSINR;
 	}
 	else
 	{
-		slope_inv = PDR_SLOPE_TABLE[link_pdr];
+		float deltaPDR = 1.0 / 100.0;
+		float deltaSINR = PDR_SINR[link_pdr] - PDR_SINR[link_pdr - 1];
+		slope = deltaPDR / deltaSINR;
 	}
 	
-	float deltaI_dB = (ALPHA * link_pdr + (1 - ALPHA) * link_pdr_sample - link_pdr_req) * slope_inv / 100;
+	float diffPDR = ((float)link_pdr / 100.0) * ALPHA + ((float)link_pdr_sample / 100.0) * (1 - ALPHA) - ((float)link_pdr_req / 100.0);
+	float deltaI_dB = diffPDR / ((1 - ALPHA) * slope);
 
-	if(deltaI_dB > 7)
-	{
-		deltaI_dB = 7;
-	}
-	else
-	{
-		// do nothing
-	}
 	return deltaI_dB;
 }
 
@@ -235,7 +233,18 @@ void updateER(uint8_t pdr_index)
 		localLinkERTable[local_link_er_index].er_version += 1;
 */
 		localLinkERTable[local_link_er_index].updated_sm_index = i;
-		localLinkERTable[local_link_er_index].updated_I_edge = signalMap[i].inbound_ed;
+		if(i == 0)
+		{
+			localLinkERTable[local_link_er_index].updated_I_edge = MAX_ED;
+		}
+		else if(i == valid_sm_entry_size - 1)
+		{
+			localLinkERTable[local_link_er_index].updated_I_edge = INVALID_ED;
+		}
+		else
+		{
+			localLinkERTable[local_link_er_index].updated_I_edge = signalMap[i].inbound_ed;
+		}
 		localLinkERTable[local_link_er_index].updated_er_version += 1;
 		localLinkERTable[i].installed = 0;
 		// er version overflow warning
@@ -252,7 +261,7 @@ void updateER(uint8_t pdr_index)
 		// delay update or quick update (er_sending_index = 0) ???
 		//updateConflictGraphForLocalERChange(local_link_er_index);
 		//deltaI_mW *= 1000000;
-		//printf("SM index %u, SM size %u, scaled deltaI_mW %f\r\n", i, valid_sm_entry_size, deltaI_mW);
+		printf("SM index %u, SM size %u, delataI_dB %f\r\n", localLinkERTable[local_link_er_index].sm_index, valid_sm_entry_size, deltaI_dB);
 	}
 
 	return;

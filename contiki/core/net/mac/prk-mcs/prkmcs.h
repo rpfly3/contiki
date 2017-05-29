@@ -55,6 +55,7 @@ enum
 	INVALID_CHANNEL           = 0,
 	INVALID_POWER_LEVEL       = 0xFF,
 	INVALID_ED				  = -1,
+	MAX_ED					  = 84,
 
 	ER_SEGMENT_LENGTH         = 3,
 	SM_SEGMENT_LENGTH         = 3,
