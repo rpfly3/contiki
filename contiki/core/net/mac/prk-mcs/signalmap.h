@@ -5,9 +5,9 @@
 #include "core/net/linkaddr.h"
 
 enum {
-	SIGNAL_MAP_SIZE = 75,
-	NB_SIGNAL_MAP_SIZE = 75,
-	NB_SM_SIZE = 75,
+	SIGNAL_MAP_SIZE = 120,
+	NB_SIGNAL_MAP_SIZE = 120,
+	NB_SM_SIZE = 120,
 };
 
 /* signal map for the node itself, and note that the unit of gain is db */
