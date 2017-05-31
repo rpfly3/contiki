@@ -43,6 +43,7 @@ static void resetChannelStatus()
 
 	return;
 }
+/* multichannel LAMA
 // LAMA has very low concurrency, so there is no interference control
 void runLama(struct asn_t current_slot)
 {
@@ -174,7 +175,7 @@ void runLama(struct asn_t current_slot)
 	}
 	return;
 }
-
+*/
 /*
 // single channel lama
 void runLama(struct asn_t current_slot) { 
@@ -259,3 +260,130 @@ void runLama(struct asn_t current_slot) {
 	4) update lates state right after oldest state update
 
 */
+enum{
+	UNDECIDED = 0, // 00
+	UNDEFINED = 1, // 01
+	INACTIVE = 2, // 10
+	ACTIVE = 3, // 11
+}
+enum{
+	SLOT_MASK = 0x3F,
+	MAX_SLOT_FORWARD = SLOT_MASK + 1,
+	CONFLICT_GRAPH_DIAMETER = 7,
+	CONTROL_SIGNALING_INTERVAL = 16,
+	ONAMA_CONVERGENCE_TIME = CONFLICT_GRAPH_DIAMETER * CONTROL_SIGNALING_INTERVAL,
+	GROUP_SIZE = 16,
+	ROUND_SIZE = ONAMA_CONVERGENCE_TIME / GROUP_SIZE + 1,
+	ONAMA_SCHEDULE_SIZE = MAX_SLOT_FORWARD / 3,
+}
+
+bool next_state_initialized = false, conflict_graph_initialized = false;
+
+bool LAMA()
+{
+	bool scheduled = false;
+	return scheduled;
+}
+
+void initNextBitState(uint8_t x, uint8_t y)
+{
+	for(uint8_t i = 0; i < link_er_size; ++i)
+	{
+		linkERTable[i].active_bitmap[x] |= (1 << y);
+	}
+}
+
+uint8_t onamaSchedule[ONAMA_SCHEDULE_SIZE];
+void runONAMA(struct asn_t time_slot)
+{
+	uint32_t current_slot = time_slot.ls4b;
+	uint32_t group_index = current_slot / GROUP_SIZE;
+	uint8_t group_offset = current_slot % GROUP_SIZE;
+	uint8_t round_offset = group_index % ROUND_SIZE;
+
+	if(group_offset == 0 || !conflict_graph_initialized) 
+	{
+		for(uint8_t i = 0; i < LINK_ER_TABLE_SIZE; ++i)
+		{
+			bool is_conflict = linkERTable[i].secondary & (1 << local_link_er_index);
+			if(conflict_graph_initialized)
+			{
+				if(is_conflict)
+				{
+					// not add conflict member yet
+					linkERTable[i].conflict |= (1 << round_offset);
+				}
+				else
+				{
+					linkERTable[i].conflict &= ~(1 << round_offset);
+				}
+			}
+			else
+			{
+				// each bit indicate the conflict relation in a round (M consecutive slots)
+				linkERTable[i].conflict = is_conflict ? 255 : 0;
+			}
+		}
+		conflict_graph_initialized = true;
+	}
+	else
+	{
+		// nothing
+	}
+
+	uint8_t onama_round_index = 0;
+}
+
+void onama_task()
+{
+	uint8_t index = (i + bitmap_head) % ONAMA_CONVERGENCE_TIME;
+
+	uint8_t x = index / 8;
+	uint8_t y = index % 8;
+	uint8_t x_2 = index / 4;
+	uint8_t y_2 = index % 4;
+
+	uint8_t schedule_status = ((bitmap[x_2] >> (y_2 + 1)) & 1) << 1 + ((bitmap[x_2] >> y_2) & 1);
+
+	if(schedule_status == UNDEFINED)
+	{
+		log_error("Invalid onama schedule status");
+	}
+	else if(schedule_status == UNDECIDED)
+	{
+		if(LAMA())
+		{
+			bitmap[x_2] |= (1 << y_2);
+			bitmap[x_2] |= (1 << (y_2 + 1));
+		}
+		else
+		{
+			// do nothing	
+		}
+	}
+
+	// output transient_bitmap's oldest 2bit as olama_bitmap's latest bit
+	if(i == 0)
+	{
+		x_ = bitmap_head / 8;
+		y_ = bitmap_head % 8;
+
+		schedule_status = ((bitmap[x_2] >> (y_2 + 1)) & 1) << 1 + ((bitmap[x_2] >> y_2) & 1);
+
+		// be conservative and treat undecided as inactive
+		if(schedule_status == ACTIVE)
+		{
+			onamaSchedule[x_] |= (1 << y_);
+		}
+		else
+		{
+			onamaSchedule[x_] &= ~(1 << y_);
+		}
+
+		bitmap[x_2] &= ~(1 << y_2);
+		bitmap[x_2] &= ~(1 << (y_2 + 1));
+
+		initNextBitState(x, y);
+		next_state_initialized = true;
+	}
+}
