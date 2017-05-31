@@ -176,6 +176,7 @@ void runLama(struct asn_t current_slot)
 }
 
 /*
+// single channel lama
 void runLama(struct asn_t current_slot) { 
 	uint32_t prio, my_prio = 0;
 	uint8_t local_link_er_index;
@@ -242,5 +243,19 @@ void runLama(struct asn_t current_slot) {
 	}
 	return;
 }
+
+*/
+
+/*
+	OLAMA State update algorithm
+	1) for each state in OLAMA state vector
+		if state == UNDECIDED
+			if all higher priority conflicg links are INACTIVE
+				state = ACTIVE
+		else
+			do nothing
+	2) output the oldest state, i.e., the entry indexed by the circular array head, to finalized OLAMA decision
+	3) right shift by 1 
+	4) update lates state right after oldest state update
 
 */
