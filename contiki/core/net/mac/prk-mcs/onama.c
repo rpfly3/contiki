@@ -43,7 +43,7 @@ static void resetChannelStatus()
 
 	return;
 }
-
+// LAMA has very low concurrency, so there is no interference control
 void runLama(struct asn_t current_slot)
 {
 	uint32_t prio, my_prio = 0;
