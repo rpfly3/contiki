@@ -15,6 +15,11 @@ typedef struct {
 	/* each bit indicates the conflict relation with corresponding link in local er table */
 	uint16_t primary;
 	uint16_t secondary;
+
+	/* freeze the conflict set during OLAMA: consecutive (ONAMA_CONVERGENCE_TIME/ 8) slots share the same conflict set */
+	uint8_t conflict;
+	/* each 4 bits store the current decision of the link's activation in a furture slot */
+	uint8_t active_bitmap[ONAMA_CONVERGENCE_TIME >> 1];
 } link_er_t;
 
 void protocolSignalingInit();

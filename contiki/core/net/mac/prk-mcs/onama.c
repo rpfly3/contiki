@@ -255,27 +255,40 @@ void runLama(struct asn_t current_slot) {
 				state = ACTIVE
 		else
 			do nothing
-	2) output the oldest state, i.e., the entry indexed by the circular array head, to finalized OLAMA decision
+	2) output the oldest state, i.e., the entry indexed by the circular array head, to finalize OLAMA decision
 	3) right shift by 1 
 	4) update lates state right after oldest state update
 
 */
 enum{
-	UNDECIDED = 0, // 00
-	UNDEFINED = 1, // 01
-	INACTIVE = 2, // 10
-	ACTIVE = 3, // 11
+	INACTIVE = 0, // 0000 0000
+	ACTIVE_CHANNEL_1 = 1, // 0000 0001
+	ACTIVE_CHANNEL_2 = 2, // 0000 0010
+	ACTIVE_CHANNEL_3 = 3, // 0000 0011
+	ACTIVE_CHANNEL_4 = 4, // 0000 0100
+	ACTIVE_CHANNEL_5 = 5, // 0000 0101
+	ACTIVE_CHANNEL_6 = 6, // 0000 0110
+	ACTIVE_CHANNEL_7 = 7, // 0000 0111
+	ACTIVE_CHANNEL_8 = 8, // 0000 1000
+	ACTIVE_CHANNEL_9 = 9, // 0000 1001
+	ACTIVE_CHANNEL_10 = 10, // 0000 1010
+	ACTIVE_CHANNEL_11 = 11, // 0000 1011
+	ACTIVE_CHANNEL_12 = 12, // 0000 1100
+	ACTIVE_CHANNEL_13 = 13, // 0000 1101
+	ACTIVE_CHANNEL_14 = 14, // 0000 1110
+	ACTIVE_CHANNEL_15 = 15, // 0000 1111
+	UNDECIDED = 16, // 0001 0000
 }
 enum{
-	SLOT_MASK = 0x3F,
-	MAX_SLOT_FORWARD = SLOT_MASK + 1,
-	CONFLICT_GRAPH_DIAMETER = 7,
-	CONTROL_SIGNALING_INTERVAL = 16,
-	ONAMA_CONVERGENCE_TIME = CONFLICT_GRAPH_DIAMETER * CONTROL_SIGNALING_INTERVAL,
+	ONAMA_CONVERGENCE_TIME = 128,
 	GROUP_SIZE = 16,
-	ROUND_SIZE = ONAMA_CONVERGENCE_TIME / GROUP_SIZE + 1,
-	ONAMA_SCHEDULE_SIZE = MAX_SLOT_FORWARD / 3,
+	ROUND_SIZE = 8,
+	ONAMA_SCHEDULE_SIZE = ONAMA_CONVERGENCE_TIME >> 1,
 }
+
+// ONAMA final decisions on whether to be active in the next ONAMA_CONVERGENCE_TIME slots
+uint8_t onamaSchedule[ONAMA_SCHEDULE_SIZE];
+uint8_t transientSchedule[ONAMA_CONVERGENCE_TIME];
 
 bool next_state_initialized = false, conflict_graph_initialized = false;
 
@@ -293,24 +306,25 @@ void initNextBitState(uint8_t x, uint8_t y)
 	}
 }
 
-uint8_t onamaSchedule[ONAMA_SCHEDULE_SIZE];
+
 void runONAMA(struct asn_t time_slot)
 {
 	uint32_t current_slot = time_slot.ls4b;
 	uint32_t group_index = current_slot / GROUP_SIZE;
-	uint8_t group_offset = current_slot % GROUP_SIZE;
-	uint8_t round_offset = group_index % ROUND_SIZE;
+	uint8_t group_offset = current_slot % GROUP_SIZE, round_offset = group_index % ROUND_SIZE;
 
+
+	// take a snapshot in the first slot of each group, and do this every GROUP_SIZE slots
 	if(group_offset == 0 || !conflict_graph_initialized) 
 	{
 		for(uint8_t i = 0; i < LINK_ER_TABLE_SIZE; ++i)
 		{
+			// save the conflict relationships
 			bool is_conflict = linkERTable[i].secondary & (1 << local_link_er_index);
 			if(conflict_graph_initialized)
 			{
 				if(is_conflict)
 				{
-					// not add conflict member yet
 					linkERTable[i].conflict |= (1 << round_offset);
 				}
 				else
@@ -320,7 +334,7 @@ void runONAMA(struct asn_t time_slot)
 			}
 			else
 			{
-				// each bit indicate the conflict relation in a round (M consecutive slots)
+				// each bit indicate the conflict relation in a round
 				linkERTable[i].conflict = is_conflict ? 255 : 0;
 			}
 		}
@@ -328,14 +342,21 @@ void runONAMA(struct asn_t time_slot)
 	}
 	else
 	{
-		// nothing
+		// no need to update conflict graph in other slots
 	}
+	uint8_t transient_schedule_head = current_slot % ONAMA_CONVERGENCE_TIME;
+	uint8_t oname_schedule_head = (current_slot >> 1) % ONAMA_SCHEDULE_SIZE;
+	// update the schedule for each future slot until ONAMA_CONVERGENCE_TIME slot
+	for(uint8_t i = 0; i < ONAMA_CONVERGENCE_TIME; ++i) 
+	{
 
-	uint8_t onama_round_index = 0;
+		onama_task(i);
+	}
 }
 
-void onama_task()
+void onama_task(uint8_t i)
 {
+
 	uint8_t index = (i + bitmap_head) % ONAMA_CONVERGENCE_TIME;
 
 	uint8_t x = index / 8;
