@@ -290,22 +290,33 @@ enum{
 uint8_t onamaSchedule[ONAMA_SCHEDULE_SIZE];
 uint8_t transientSchedule[ONAMA_CONVERGENCE_TIME];
 
-bool next_state_initialized = false, conflict_graph_initialized = false;
+bool conflict_graph_initialized = false;
 
-bool LAMA()
+uint8_t LAMA()
 {
-	bool scheduled = false;
-	return scheduled;
+	uint8_t schedule_status = UNDECIDED;
+	for(int i = 0; i < link_er_size; ++i)
+	{
+		
+	}
+	return schedule_status;
 }
 
-void initNextBitState(uint8_t x, uint8_t y)
+void initNextBitState(uint8_t transient_schedule_index, uint8_t onama_schedule_index)
 {
 	for(uint8_t i = 0; i < link_er_size; ++i)
 	{
-		linkERTable[i].active_bitmap[x] |= (1 << y);
+		// xiohui sets default to be active, but I set default to be inactive;
+		if(transient_schedule_index % 2 == 0) 
+		{
+			linkERTable[i].active_bitmap[onama_schedule_index] &= 0x0F;
+		}
+		else
+		{
+			linkERTable[i].active_bitmap[onama_schedule_index] &= 0xF0;
+		}
 	}
 }
-
 
 void runONAMA(struct asn_t time_slot)
 {
@@ -344,67 +355,66 @@ void runONAMA(struct asn_t time_slot)
 	{
 		// no need to update conflict graph in other slots
 	}
+
+	// update ONAMA schedule status
 	uint8_t transient_schedule_head = current_slot % ONAMA_CONVERGENCE_TIME;
 	uint8_t oname_schedule_head = (current_slot >> 1) % ONAMA_SCHEDULE_SIZE;
 	// update the schedule for each future slot until ONAMA_CONVERGENCE_TIME slot
 	for(uint8_t i = 0; i < ONAMA_CONVERGENCE_TIME; ++i) 
 	{
-
-		onama_task(i);
+		onama_task(i, transient_schedule_head, onama_schedule_head);
 	}
 }
 
-void onama_task(uint8_t i)
+void onama_task(uint8_t i, uint8_t transient_schedule_head, uint8_t onama_schedule_head)
 {
+	// ONAMA state index for each time slot
+	uint8_t transient_schedule_index = (i + transient_schedule_head) % ONAMA_CONVERGENCE_TIME;
+	uint8_t onama_schedule_index = (transient_schedule_index >> 1) % ONAMA_SCHEDULE_SIZE;
+	uint8_t schedule_status = transientSchedule[transient_schedule_index];
 
-	uint8_t index = (i + bitmap_head) % ONAMA_CONVERGENCE_TIME;
-
-	uint8_t x = index / 8;
-	uint8_t y = index % 8;
-	uint8_t x_2 = index / 4;
-	uint8_t y_2 = index % 4;
-
-	uint8_t schedule_status = ((bitmap[x_2] >> (y_2 + 1)) & 1) << 1 + ((bitmap[x_2] >> y_2) & 1);
-
-	if(schedule_status == UNDEFINED)
+	// only for UNDECIDED
+	if(schedule_status == UNDECIDED)
+	{
+		schedule_status = LAMA();
+	} 
+	else if(schedule_status > UNDECIDED)
 	{
 		log_error("Invalid onama schedule status");
 	}
-	else if(schedule_status == UNDECIDED)
+	else
 	{
-		if(LAMA())
-		{
-			bitmap[x_2] |= (1 << y_2);
-			bitmap[x_2] |= (1 << (y_2 + 1));
-		}
-		else
-		{
-			// do nothing	
-		}
+		// do nothing for decided statuses
 	}
 
 	// output transient_bitmap's oldest 2bit as olama_bitmap's latest bit
 	if(i == 0)
 	{
-		x_ = bitmap_head / 8;
-		y_ = bitmap_head % 8;
 
-		schedule_status = ((bitmap[x_2] >> (y_2 + 1)) & 1) << 1 + ((bitmap[x_2] >> y_2) & 1);
+		schedule_status = transientSchedule[transient_schedule_index];
 
 		// be conservative and treat undecided as inactive
-		if(schedule_status == ACTIVE)
+		if(schedule_status == UNDECIDED)
 		{
-			onamaSchedule[x_] |= (1 << y_);
+			schedule_status = INACTIVE;
+		}
+
+		if(schedule_status < UNDECIDED)
+		{
+			if(transient_schedule_index % 2 == 0) 
+			{
+				schedule_status = schedule_status << 4;
+			}
+			onamaSchedule[onama_schedule_index] |= schedule_status;
 		}
 		else
 		{
-			onamaSchedule[x_] &= ~(1 << y_);
+			log_error("Invalid onama schedule status");
 		}
 
-		bitmap[x_2] &= ~(1 << y_2);
-		bitmap[x_2] &= ~(1 << (y_2 + 1));
+		// reset transient schedule to undecided
+		transientSchedule[transient_schedule_index] = UNDECIDED;
 
-		initNextBitState(x, y);
-		next_state_initialized = true;
+		initNextBitState(transient_schedule_index, onama_schedule_index);
 	}
 }
